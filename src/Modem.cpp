@@ -35,7 +35,7 @@ bool Modem::begin()
 
     if (!gsm.init())
     {
-        Serial.println("TinyGSM init failed");
+        Serial.println("TinyGSM initialization failed");
         return false;
     }
 
@@ -44,32 +44,68 @@ bool Modem::begin()
 
     Serial.println("Waiting for network...");
 
-    if (!gsm.waitForNetwork(60000L))
+    networkConnected = gsm.waitForNetwork(60000L);
+
+    if (!networkConnected)
     {
         Serial.println("Network registration failed");
         return false;
     }
 
+    operatorName = gsm.getOperator();
+    signalQuality = gsm.getSignalQuality();
+
     Serial.println("Network connected!");
 
     Serial.print("Operator: ");
-    Serial.println(gsm.getOperator());
+    Serial.println(operatorName);
 
     Serial.print("Signal: ");
-    Serial.println(gsm.getSignalQuality());
+    Serial.println(signalQuality);
 
     Serial.println("Connecting to packet data...");
 
-    if (!gsm.gprsConnect(APN, APN_USER, APN_PASS))
+    dataConnected = gsm.gprsConnect(
+        APN,
+        APN_USER,
+        APN_PASS);
+
+    if (!dataConnected)
     {
         Serial.println("Packet data connection FAILED");
         return false;
     }
 
+    ipAddress = gsm.localIP().toString();
+
     Serial.println("Packet data connected!");
 
     Serial.print("IP Address: ");
-    Serial.println(gsm.localIP());
+    Serial.println(ipAddress);
 
     return true;
+}
+bool Modem::isNetworkConnected() const
+{
+    return networkConnected;
+}
+
+bool Modem::isDataConnected() const
+{
+    return dataConnected;
+}
+
+int Modem::getSignalQuality() const
+{
+    return signalQuality;
+}
+
+const String &Modem::getOperatorName() const
+{
+    return operatorName;
+}
+
+const String &Modem::getIpAddress() const
+{
+    return ipAddress;
 }

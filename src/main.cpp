@@ -47,32 +47,69 @@ void loop()
 {
     mqtt.loop();
 
-    static unsigned long lastDisplay = 0;
+    static unsigned long lastTemperatureRead = 0;
+    static unsigned long lastScreenChange = 0;
     static unsigned long lastPublish = 0;
+
+    static float ambientTemperatureF = 0.0f;
+    static uint8_t screenNumber = 0;
 
     const unsigned long now = millis();
 
-    if (now - lastDisplay >= 5000)
+    // Read the sensor every five seconds.
+    if (now - lastTemperatureRead >= 5000)
     {
-        lastDisplay = now;
+        lastTemperatureRead = now;
 
-        const float temperatureF = temp.getFahrenheit();
+        ambientTemperatureF = temp.getFahrenheit();
 
-        Serial.printf("Ambient: %.1f F\n", temperatureF);
-
-        oled.status(
-            "Camper Monitor",
-            "Ambient",
-            String(temperatureF, 1) + " F");
+        Serial.printf(
+            "Ambient: %.1f F\n",
+            ambientTemperatureF);
     }
 
+    // Rotate the OLED page every five seconds.
+    if (now - lastScreenChange >= 5000)
+    {
+        lastScreenChange = now;
+        screenNumber = (screenNumber + 1) % 3;
+
+        switch (screenNumber)
+        {
+            case 0:
+                oled.status(
+                    "Camper Monitor",
+                    "Ambient",
+                    String(ambientTemperatureF, 1) + " F");
+                break;
+
+            case 1:
+                oled.status(
+                    cellular.isNetworkConnected()
+                        ? "LTE Connected"
+                        : "LTE Offline",
+                    cellular.getOperatorName(),
+                    "Signal: " +
+                        String(cellular.getSignalQuality()));
+                break;
+
+            case 2:
+                oled.status(
+                    cellular.isDataConnected()
+                        ? "Packet Data"
+                        : "Data Offline",
+                    "IP: " + cellular.getIpAddress(),
+                    "MQTT: Offline");
+                break;
+        }
+    }
+
+    // This will remain unsuccessful until MQTT TLS is added.
     if (now - lastPublish >= 30000)
     {
         lastPublish = now;
 
-        const float temperatureF = temp.getFahrenheit();
-
-        if (mqtt.publishAmbient(temperatureF))
+        if (mqtt.publishAmbient(ambientTemperatureF))
         {
             Serial.println("Published temperature");
         }
