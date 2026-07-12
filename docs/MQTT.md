@@ -1,0 +1,4 @@
+rvmonitor/camper01/status/heartbeat
+rvmonitor/camper01/temperature/fridge
+rvmonitor/camper01/temperature/freezer
+rvmonitor/camper01/power/shore_power

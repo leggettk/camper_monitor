@@ -1,0 +1,14 @@
+ESP32:
+LILYGO T-SIM7000G
+ESP32-WROVER-B
+16 MB Flash
+
+Cellular:
+SIM7000G
+
+Display:
+ELEGOO EL-SM-056
+SSD1306 OLED
+
+Sensors:
+DS18B20 Waterproof
