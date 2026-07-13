@@ -5,7 +5,9 @@
 #include "Modem.h"
 #include "MQTT.h"
 #include "Temperature.h"
+#include "AppState.h"
 
+AppState state;
 Temperature temp;
 
 void setup()
@@ -96,31 +98,28 @@ void loop()
             ambientTemperatureF);
     }
 
-    DisplayData displayData;
+state.ambientTemperatureF = ambientTemperatureF;
 
-    displayData.ambientTemperatureF =
-        ambientTemperatureF;
+state.networkConnected = cellular.isNetworkConnected();
+state.dataConnected = cellular.isDataConnected();
+state.mqttConnected = mqtt.isConnected();
 
-    displayData.networkConnected =
-        cellular.isNetworkConnected();
+state.signalQuality = cellular.getSignalQuality();
+state.operatorName = cellular.getOperatorName();
+state.ipAddress = cellular.getIpAddress();
 
-    displayData.dataConnected =
-        cellular.isDataConnected();
+state.uptimeSeconds = millis() / 1000UL;
 
-    displayData.mqttConnected =
-        mqtt.isConnected();
+DisplayData displayData;
 
-    displayData.operatorName =
-        cellular.getOperatorName();
-
-    displayData.signalQuality =
-        cellular.getSignalQuality();
-
-    displayData.ipAddress =
-        cellular.getIpAddress();
-
-    displayData.uptimeSeconds =
-        millis() / 1000UL;
+displayData.ambientTemperatureF = state.ambientTemperatureF;
+displayData.networkConnected = state.networkConnected;
+displayData.dataConnected = state.dataConnected;
+displayData.mqttConnected = state.mqttConnected;
+displayData.signalQuality = state.signalQuality;
+displayData.operatorName = state.operatorName;
+displayData.ipAddress = state.ipAddress;
+displayData.uptimeSeconds = state.uptimeSeconds;
 
     oled.update(displayData);
 
