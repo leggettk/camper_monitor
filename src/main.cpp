@@ -6,18 +6,19 @@
 #include "MQTT.h"
 #include "Temperature.h"
 #include "AppState.h"
+#include "Logger.h"
 
 AppState state;
 Temperature temp;
 
 void setup()
 {
-    Serial.begin(115200);
+    logger.begin(115200, LogLevel::Info);
     delay(500);
 
     if (!oled.begin())
     {
-        Serial.println("OLED failed!");
+        logger.error("OLED initialization failed!");
     }
 
     userButton.begin();
@@ -32,7 +33,7 @@ void setup()
 
     if (cellular.begin())
     {
-        Serial.println("Modem OK");
+        logger.info("Modem OK");
     }
     else
     {
@@ -45,7 +46,7 @@ void setup()
     }
     else
     {
-        Serial.println("MQTT unavailable");
+        logger.warning("MQTT unavailable");
     }
 }
 
@@ -93,9 +94,9 @@ void loop()
         ambientTemperatureF =
             temp.getFahrenheit();
 
-        Serial.printf(
-            "Ambient: %.1f F\n",
-            ambientTemperatureF);
+        logger.infof(
+            "Ambient temperature: %.1f F\n",
+            state.ambientTemperatureF);
     }
 
 state.ambientTemperatureF = ambientTemperatureF;
