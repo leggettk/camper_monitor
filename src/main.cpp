@@ -1,9 +1,10 @@
 #include <Arduino.h>
 
+#include "Button.h"
 #include "Display.h"
-#include "Temperature.h"
 #include "Modem.h"
 #include "MQTT.h"
+#include "Temperature.h"
 
 Temperature temp;
 
@@ -17,6 +18,8 @@ void setup()
         Serial.println("OLED failed!");
     }
 
+    userButton.begin();
+
     if (!temp.begin())
     {
         Serial.println("Temperature sensor not found!");
@@ -25,13 +28,14 @@ void setup()
     oled.bootScreen();
     delay(1500);
 
-    if (!cellular.begin())
+    if (cellular.begin())
+    {
+        Serial.println("Modem OK");
+    }
+    else
     {
         Serial.println("Modem FAILED");
-        return;
     }
-
-    Serial.println("Modem OK");
 
     if (mqtt.begin())
     {
@@ -39,83 +43,101 @@ void setup()
     }
     else
     {
-        Serial.println("MQTT FAILED");
+        Serial.println("MQTT unavailable");
     }
 }
 
 void loop()
 {
     mqtt.loop();
+    userButton.update();
 
     static unsigned long lastTemperatureRead = 0;
-    static unsigned long lastScreenChange = 0;
     static unsigned long lastPublish = 0;
 
     static float ambientTemperatureF = 0.0f;
-    static uint8_t screenNumber = 0;
 
     const unsigned long now = millis();
 
-    // Read the sensor every five seconds.
+    if (userButton.wasPressed())
+    {
+        if (oled.isAwake())
+        {
+            oled.nextPage();
+        }
+        else
+        {
+            oled.wake();
+        }
+
+        Serial.println("Display button pressed.");
+    }
+
+    if (userButton.wasLongPressed())
+    {
+        Serial.println("Long press detected.");
+        Serial.println("MQTT reconnect will be added later.");
+
+        oled.status(
+            "Camper Monitor",
+            "MQTT reconnect",
+            "Not available yet");
+    }
+
     if (now - lastTemperatureRead >= 5000)
     {
         lastTemperatureRead = now;
 
-        ambientTemperatureF = temp.getFahrenheit();
+        ambientTemperatureF =
+            temp.getFahrenheit();
 
         Serial.printf(
             "Ambient: %.1f F\n",
             ambientTemperatureF);
     }
 
-    // Rotate the OLED page every five seconds.
-    if (now - lastScreenChange >= 5000)
-    {
-        lastScreenChange = now;
-        screenNumber = (screenNumber + 1) % 3;
+    DisplayData displayData;
 
-        switch (screenNumber)
-        {
-            case 0:
-                oled.status(
-                    "Camper Monitor",
-                    "Ambient",
-                    String(ambientTemperatureF, 1) + " F");
-                break;
+    displayData.ambientTemperatureF =
+        ambientTemperatureF;
 
-            case 1:
-                oled.status(
-                    cellular.isNetworkConnected()
-                        ? "LTE Connected"
-                        : "LTE Offline",
-                    cellular.getOperatorName(),
-                    "Signal: " +
-                        String(cellular.getSignalQuality()));
-                break;
+    displayData.networkConnected =
+        cellular.isNetworkConnected();
 
-            case 2:
-                oled.status(
-                    cellular.isDataConnected()
-                        ? "Packet Data"
-                        : "Data Offline",
-                    "IP: " + cellular.getIpAddress(),
-                    "MQTT: Offline");
-                break;
-        }
-    }
+    displayData.dataConnected =
+        cellular.isDataConnected();
 
-    // This will remain unsuccessful until MQTT TLS is added.
+    displayData.mqttConnected =
+        mqtt.isConnected();
+
+    displayData.operatorName =
+        cellular.getOperatorName();
+
+    displayData.signalQuality =
+        cellular.getSignalQuality();
+
+    displayData.ipAddress =
+        cellular.getIpAddress();
+
+    displayData.uptimeSeconds =
+        millis() / 1000UL;
+
+    oled.update(displayData);
+
     if (now - lastPublish >= 30000)
     {
         lastPublish = now;
 
-        if (mqtt.publishAmbient(ambientTemperatureF))
+        if (mqtt.publishAmbient(
+                ambientTemperatureF))
         {
-            Serial.println("Published temperature");
+            Serial.println(
+                "Published temperature");
         }
         else
         {
-            Serial.println("Temperature publish failed");
+            Serial.println(
+                "Temperature publish failed");
         }
     }
 }

@@ -19,3 +19,8 @@ bool MQTT::publishAmbient(float temperatureF)
     (void)temperatureF;
     return false;
 }
+
+bool MQTT::isConnected() const
+{
+    return false;
+}
