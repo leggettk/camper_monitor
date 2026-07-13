@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include "AppState.h"
 
 enum class DisplayPage : uint8_t
 {
@@ -33,7 +34,7 @@ public:
     bool begin();
     void bootScreen();
 
-    void update(const DisplayData &data);
+    void update(const AppState &state);
 
     void nextPage();
     void previousPage();
@@ -51,10 +52,10 @@ public:
         const String &line3);
 
 private:
-    void renderAmbient(const DisplayData &data);
-    void renderLTE(const DisplayData &data);
-    void renderInternet(const DisplayData &data);
-    void renderSystem(const DisplayData &data);
+    void renderAmbient(const AppState &state);
+    void renderLTE(const AppState &state);
+    void renderInternet(const AppState &state);
+    void renderSystem(const AppState &state);
 
     void resetActivityTimer();
 

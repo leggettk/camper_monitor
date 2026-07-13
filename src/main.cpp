@@ -110,18 +110,9 @@ state.ipAddress = cellular.getIpAddress();
 
 state.uptimeSeconds = millis() / 1000UL;
 
-DisplayData displayData;
 
-displayData.ambientTemperatureF = state.ambientTemperatureF;
-displayData.networkConnected = state.networkConnected;
-displayData.dataConnected = state.dataConnected;
-displayData.mqttConnected = state.mqttConnected;
-displayData.signalQuality = state.signalQuality;
-displayData.operatorName = state.operatorName;
-displayData.ipAddress = state.ipAddress;
-displayData.uptimeSeconds = state.uptimeSeconds;
 
-    oled.update(displayData);
+    oled.update(state);
 
     if (now - lastPublish >= 30000)
     {

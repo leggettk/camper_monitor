@@ -47,7 +47,7 @@ void Display::bootScreen()
     display.display();
 }
 
-void Display::update(const DisplayData &data)
+void Display::update(const AppState &state)
 {
     const unsigned long now = millis();
 
@@ -74,19 +74,19 @@ void Display::update(const DisplayData &data)
     switch (page)
     {
         case DisplayPage::Ambient:
-            renderAmbient(data);
+            renderAmbient(state);
             break;
 
         case DisplayPage::LTE:
-            renderLTE(data);
+            renderLTE(state);
             break;
 
         case DisplayPage::Internet:
-            renderInternet(data);
+            renderInternet(state);
             break;
 
         case DisplayPage::System:
-            renderSystem(data);
+            renderSystem(state);
             break;
     }
 }
@@ -168,7 +168,7 @@ void Display::status(
     display.display();
 }
 
-void Display::renderAmbient(const DisplayData &data)
+void Display::renderAmbient(const AppState &state)
 {
     display.clearDisplay();
 
@@ -182,14 +182,14 @@ void Display::renderAmbient(const DisplayData &data)
 
     display.setTextSize(3);
     display.setCursor(0, 32);
-    display.print(data.ambientTemperatureF, 1);
+    display.print(state.ambientTemperatureF, 1);
     display.setTextSize(1);
     display.print(" F");
 
     display.display();
 }
 
-void Display::renderLTE(const DisplayData &data)
+void Display::renderLTE(const AppState &state)
 {
     display.clearDisplay();
 
@@ -201,25 +201,25 @@ void Display::renderLTE(const DisplayData &data)
     display.setCursor(0, 18);
     display.print("Network: ");
     display.println(
-        data.networkConnected ? "Online" : "Offline");
+        state.networkConnected ? "Online" : "Offline");
 
     display.print("Carrier: ");
-    display.println(data.operatorName);
+    display.println(state.operatorName);
 
     display.print("Signal: ");
-    if (data.signalQuality == 99)
+    if (state.signalQuality == 99)
     {
         display.println("Unknown");
     }
     else
     {
-        display.println(data.signalQuality);
+        display.println(state.signalQuality);
     }
 
     display.display();
 }
 
-void Display::renderInternet(const DisplayData &data)
+void Display::renderInternet(const AppState &state)
 {
     display.clearDisplay();
 
@@ -232,25 +232,25 @@ void Display::renderInternet(const DisplayData &data)
 
     display.print("Data: ");
     display.println(
-        data.dataConnected ? "Online" : "Offline");
+        state.dataConnected ? "Online" : "Offline");
 
     display.print("MQTT: ");
     display.println(
-        data.mqttConnected ? "Online" : "Offline");
+        state.mqttConnected ? "Online" : "Offline");
 
     display.println("IP:");
-    display.println(data.ipAddress);
+    display.println(state.ipAddress);
 
     display.display();
 }
 
-void Display::renderSystem(const DisplayData &data)
+void Display::renderSystem(const AppState &state)
 {
     const unsigned long hours =
-        data.uptimeSeconds / 3600UL;
+        state.uptimeSeconds / 3600UL;
 
     const unsigned long minutes =
-        (data.uptimeSeconds % 3600UL) / 60UL;
+        (state.uptimeSeconds % 3600UL) / 60UL;
 
     display.clearDisplay();
 
