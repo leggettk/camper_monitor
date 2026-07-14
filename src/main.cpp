@@ -25,7 +25,7 @@ void setup()
 
     if (!temp.begin())
     {
-        Serial.println("Temperature sensor not found!");
+        logger.error("Temperature sensor not found!");
     }
 
     oled.bootScreen();
@@ -37,12 +37,12 @@ void setup()
     }
     else
     {
-        Serial.println("Modem FAILED");
+        logger.error("Modem FAILED");
     }
 
     if (mqtt.begin())
     {
-        Serial.println("MQTT OK");
+        logger.info("MQTT OK");
     }
     else
     {
@@ -120,7 +120,7 @@ state.uptimeSeconds = millis() / 1000UL;
         lastPublish = now;
 
         if (mqtt.publishAmbient(
-                ambientTemperatureF))
+                state.ambientTemperatureF))
         {
             Serial.println(
                 "Published temperature");

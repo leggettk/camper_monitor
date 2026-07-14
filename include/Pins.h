@@ -9,3 +9,4 @@ constexpr uint8_t PIN_MODEM_TX      = 27;
 constexpr uint8_t PIN_MODEM_RX      = 26;
 constexpr uint8_t PIN_MODEM_PWRKEY  = 4;
 constexpr uint8_t PIN_USER_BUTTON = 33;
+constexpr uint8_t PIN_TLS_ENTROPY = 34;
