@@ -17,8 +17,9 @@ struct AppState
     String ipAddress = "";
 
     unsigned long uptimeSeconds = 0;
-    uint32_t freeHeap;
+    uint32_t freeHeap = 0;
     
     float batteryVoltage = 0.0f;
     bool batteryVoltageValid = false;
+    bool shorePowerPresent = false;
 };

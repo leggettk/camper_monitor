@@ -37,6 +37,12 @@ constexpr char AMBIENT_TOPIC[] =
 
 constexpr char AMBIENT_DISCOVERY_TOPIC[] =
     "homeassistant/sensor/camper01_ambient/config";
+
+constexpr char SHORE_POWER_TOPIC[] =
+    "rvmonitor/camper01/power/shore";
+
+constexpr char HEARTBEAT_TOPIC[] =
+    "rvmonitor/camper01/heartbeat";
 }
 
 bool MQTT::begin()
@@ -242,6 +248,129 @@ bool MQTT::publishDiscovery()
     {
         logger.error(
             "Failed to publish ambient MQTT discovery");
+    }
+
+    return published;
+}
+bool MQTT::publishShorePower(bool present)
+{
+    if (!mqttClient.connected())
+    {
+        logger.warning(
+            "Shore power publish skipped: MQTT offline");
+
+        return false;
+    }
+
+    const char *payload =
+        present ? "ON" : "OFF";
+
+    const bool published =
+        mqttClient.publish(
+            SHORE_POWER_TOPIC,
+            payload,
+            true);
+
+    if (published)
+    {
+        logger.infof(
+            "Published shore power: %s",
+            payload);
+    }
+    else
+    {
+        logger.error(
+            "Failed to publish shore power");
+    }
+
+    return published;
+}
+bool MQTT::publishHeartbeat(const AppState &state)
+{
+    if (!mqttClient.connected())
+    {
+        logger.warning(
+            "Heartbeat publish skipped: MQTT offline");
+
+        return false;
+    }
+
+    JsonDocument document;
+
+    document["status"] = "online";
+    document["uptime_seconds"] = state.uptimeSeconds;
+    document["free_heap"] = state.freeHeap;
+    document["signal_quality"] = state.signalQuality;
+
+    document["network_connected"] =
+        state.networkConnected;
+
+    document["data_connected"] =
+        state.dataConnected;
+
+    document["mqtt_connected"] =
+        state.mqttConnected;
+
+    if (state.temperatureValid)
+    {
+        document["ambient_temperature_f"] =
+            state.ambientTemperatureF;
+    }
+
+    if (state.batteryVoltageValid)
+    {
+        document["battery_voltage"] =
+            state.batteryVoltage;
+    }
+
+    document["shore_power"] =
+        state.shorePowerPresent;
+
+    document["operator"] =
+        state.operatorName;
+
+    document["ip_address"] =
+        state.ipAddress;
+
+    document["firmware"] =
+        FW_VERSION;
+
+    char payload[512];
+
+    const size_t length =
+        serializeJson(
+            document,
+            payload,
+            sizeof(payload));
+
+    if (
+        length == 0 ||
+        length >= sizeof(payload))
+    {
+        logger.error(
+            "Heartbeat JSON buffer is too small");
+
+        return false;
+    }
+
+    const bool published =
+        mqttClient.publish(
+            HEARTBEAT_TOPIC,
+            payload,
+            true);
+
+    if (published)
+    {
+        logger.infof(
+            "Published heartbeat: uptime=%lus, heap=%lu",
+            state.uptimeSeconds,
+            state.freeHeap);
+    }
+    else
+    {
+        logger.errorf(
+            "Heartbeat publish failed, MQTT state=%d",
+            mqttClient.state());
     }
 
     return published;

@@ -11,3 +11,4 @@ constexpr uint8_t PIN_MODEM_PWRKEY  = 4;
 constexpr uint8_t PIN_USER_BUTTON = 33;
 constexpr uint8_t PIN_TLS_ENTROPY = 34;
 constexpr uint8_t PIN_BATTERY_VOLTAGE = 35;
+constexpr uint8_t PIN_USB_POWER_SENSE = 25;

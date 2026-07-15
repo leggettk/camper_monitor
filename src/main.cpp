@@ -8,12 +8,14 @@
 #include "AppState.h"
 #include "Logger.h"
 #include "Battery.h"
+#include "ShorePower.h"
+#include "Config.h"
 
 AppState state;
 Temperature temp;
-constexpr unsigned long TEMPERATURE_INTERVAL_MS = 5000;
+//constexpr unsigned long TEMPERATURE_INTERVAL_MS = 5000;
 constexpr unsigned long BATTERY_INTERVAL_MS = 60000;
-constexpr unsigned long MQTT_PUBLISH_INTERVAL_MS = 60000;
+//constexpr unsigned long MQTT_PUBLISH_INTERVAL_MS = 60000;
 
 void updateTemperature(unsigned long now)
 {
@@ -150,12 +152,56 @@ void publishTelemetry(unsigned long now)
     }
 }
 
+void updateShorePower()
+{
+    shorePower.update();
+
+    state.shorePowerPresent =
+        shorePower.isPresent();
+
+    if (shorePower.changed())
+    {
+        logger.warning(
+            state.shorePowerPresent
+                ? "Shore power restored"
+                : "Shore power lost");
+
+        mqtt.publishShorePower(
+            state.shorePowerPresent);
+    }
+}
+
+void publishHeartbeat(unsigned long now)
+{
+    static unsigned long lastHeartbeat = 0;
+
+    if (
+        now - lastHeartbeat <
+        HEARTBEAT_INTERVAL_MS)
+    {
+        return;
+    }
+
+    lastHeartbeat = now;
+
+    if (state.mqttConnected)
+    {
+        mqtt.publishHeartbeat(state);
+    }
+    else
+    {
+        logger.warning(
+            "Heartbeat skipped: MQTT offline");
+    }
+}
+
 void setup()
 {
     logger.begin(115200, LogLevel::Info);
     delay(500);
 
     battery.begin();
+    shorePower.begin();
 
     if (!oled.begin())
     {
@@ -201,8 +247,10 @@ void loop()
     updateTemperature(now);
     updateBattery(now);
     updateCommunicationsState(now);
+    updateShorePower();
 
     oled.update(state);
 
     publishTelemetry(now);
+    publishHeartbeat(now);
 }
