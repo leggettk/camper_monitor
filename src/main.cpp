@@ -10,6 +10,7 @@
 #include "Battery.h"
 #include "ShorePower.h"
 #include "Config.h"
+#include "SMS.h"
 
 AppState state;
 Temperature temp;
@@ -154,20 +155,142 @@ void publishTelemetry(unsigned long now)
 
 void updateShorePower()
 {
+    static bool initialized = false;
+
     shorePower.update();
 
     state.shorePowerPresent =
         shorePower.isPresent();
 
-    if (shorePower.changed())
+    // Prevent a false "power lost" SMS during startup.
+    if (!initialized)
     {
-        logger.warning(
-            state.shorePowerPresent
-                ? "Shore power restored"
-                : "Shore power lost");
+        initialized = true;
 
-        mqtt.publishShorePower(
-            state.shorePowerPresent);
+        state.shorePowerAlarm =
+            !state.shorePowerPresent;
+
+        return;
+    }
+
+    if (!shorePower.changed())
+    {
+        return;
+    }
+
+    mqtt.publishShorePower(
+        state.shorePowerPresent);
+
+    if (!state.shorePowerPresent)
+    {
+        logger.warning("Shore power lost");
+
+        state.shorePowerAlarm = true;
+
+        state.lastSmsSuccessful =
+            sms.sendShorePowerLost(
+                state.batteryVoltage,
+                state.batteryVoltageValid);
+
+        if (state.lastSmsSuccessful)
+        {
+            state.lastSmsTimeSeconds =
+                millis() / 1000UL;
+        }
+    }
+    else
+    {
+        logger.info("Shore power restored");
+
+        state.shorePowerAlarm = false;
+
+        state.lastSmsSuccessful =
+            sms.sendShorePowerRestored();
+
+        if (state.lastSmsSuccessful)
+        {
+            state.lastSmsTimeSeconds =
+                millis() / 1000UL;
+        }
+    }
+}
+
+void updateTemperatureAlarm(unsigned long now)
+{
+    static unsigned long highTemperatureSince = 0;
+
+    if (!state.temperatureValid)
+    {
+        highTemperatureSince = 0;
+        return;
+    }
+
+    if (!state.highTemperatureAlarm)
+    {
+        if (
+            state.ambientTemperatureF >=
+            TEMP_HIGH_ALARM_F)
+        {
+            if (highTemperatureSince == 0)
+            {
+                highTemperatureSince = now;
+
+                logger.warning(
+                    "High-temperature delay started");
+            }
+
+            if (
+                now - highTemperatureSince >=
+                TEMP_ALARM_DELAY_MS)
+            {
+                state.highTemperatureAlarm = true;
+                highTemperatureSince = 0;
+
+                logger.errorf(
+                    "High-temperature alarm: %.1f F",
+                    state.ambientTemperatureF);
+
+                state.lastSmsSuccessful =
+                    sms.sendHighTemperature(
+                        state.ambientTemperatureF,
+                        TEMP_HIGH_ALARM_F);
+
+                if (state.lastSmsSuccessful)
+                {
+                    state.lastSmsTimeSeconds =
+                        now / 1000UL;
+                }
+            }
+        }
+        else
+        {
+            highTemperatureSince = 0;
+        }
+
+        return;
+    }
+
+    // Alarm is already active. Reset only after cooling
+    // below the lower reset threshold.
+    if (
+        state.ambientTemperatureF <=
+        TEMP_HIGH_RESET_F)
+    {
+        state.highTemperatureAlarm = false;
+
+        logger.infof(
+            "Temperature alarm cleared: %.1f F",
+            state.ambientTemperatureF);
+
+        state.lastSmsSuccessful =
+            sms.sendTemperatureNormal(
+                state.ambientTemperatureF);
+
+        if (state.lastSmsSuccessful)
+        {
+            state.lastSmsTimeSeconds =
+                now / 1000UL;
+        }
     }
 }
 
@@ -237,6 +360,8 @@ void setup()
     }
 }
 
+
+
 void loop()
 {
     const unsigned long now = millis();
@@ -248,6 +373,7 @@ void loop()
     updateBattery(now);
     updateCommunicationsState(now);
     updateShorePower();
+    updateTemperatureAlarm(now);
 
     oled.update(state);
 

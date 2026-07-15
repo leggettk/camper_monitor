@@ -22,4 +22,9 @@ struct AppState
     float batteryVoltage = 0.0f;
     bool batteryVoltageValid = false;
     bool shorePowerPresent = false;
+    bool highTemperatureAlarm = false;
+    bool shorePowerAlarm = false;
+
+    bool lastSmsSuccessful = false;
+    unsigned long lastSmsTimeSeconds = 0;
 };
