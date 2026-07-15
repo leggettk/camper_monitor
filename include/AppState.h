@@ -13,8 +13,8 @@ struct AppState
 
     int signalQuality = 99;
 
-    String operatorName = "";
-    String ipAddress = "";
+    String operatorName = "Unknown";
+    String ipAddress = "No IP";
 
     unsigned long uptimeSeconds = 0;
     uint32_t freeHeap = 0;

@@ -70,6 +70,16 @@ private:
 
     static constexpr unsigned long REFRESH_INTERVAL_MS = 1000;
     static constexpr unsigned long SCREEN_TIMEOUT_MS = 300000;
+
+void drawHeader(const char *title);
+void drawSignalBars(int signalQuality, int16_t x, int16_t y);
+void drawConnectionIndicator(
+    int16_t x,
+    int16_t y,
+    bool connected,
+    const char *label);
+
+uint8_t signalBarCount(int signalQuality) const;
 };
 
 extern Display oled;

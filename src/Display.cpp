@@ -7,6 +7,123 @@
 
 Display oled;
 
+void Display::drawHeader(const char *title)
+{
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(0, 0);
+    display.println(title);
+
+    display.drawLine(
+        0,
+        10,
+        SCREEN_WIDTH - 1,
+        10,
+        SSD1306_WHITE);
+}
+
+uint8_t Display::signalBarCount(
+    int signalQuality) const
+{
+    if (signalQuality == 99 || signalQuality <= 0)
+    {
+        return 0;
+    }
+
+    if (signalQuality <= 5)
+    {
+        return 1;
+    }
+
+    if (signalQuality <= 10)
+    {
+        return 2;
+    }
+
+    if (signalQuality <= 15)
+    {
+        return 3;
+    }
+
+    if (signalQuality <= 20)
+    {
+        return 4;
+    }
+
+    return 5;
+}
+
+void Display::drawSignalBars(
+    int signalQuality,
+    int16_t x,
+    int16_t y)
+{
+    constexpr int16_t BAR_WIDTH = 3;
+    constexpr int16_t BAR_GAP = 2;
+    constexpr uint8_t BAR_COUNT = 5;
+
+    const uint8_t activeBars =
+        signalBarCount(signalQuality);
+
+    for (uint8_t i = 0; i < BAR_COUNT; i++)
+    {
+        const int16_t height =
+            3 + (i * 2);
+
+        const int16_t barX =
+            x + i * (BAR_WIDTH + BAR_GAP);
+
+        const int16_t barY =
+            y + 11 - height;
+
+        if (i < activeBars)
+        {
+            display.fillRect(
+                barX,
+                barY,
+                BAR_WIDTH,
+                height,
+                SSD1306_WHITE);
+        }
+        else
+        {
+            display.drawRect(
+                barX,
+                barY,
+                BAR_WIDTH,
+                height,
+                SSD1306_WHITE);
+        }
+    }
+}
+
+void Display::drawConnectionIndicator(
+    int16_t x,
+    int16_t y,
+    bool connected,
+    const char *label)
+{
+    if (connected)
+    {
+        display.fillCircle(
+            x + 3,
+            y + 3,
+            3,
+            SSD1306_WHITE);
+    }
+    else
+    {
+        display.drawCircle(
+            x + 3,
+            y + 3,
+            3,
+            SSD1306_WHITE);
+    }
+
+    display.setCursor(x + 10, y);
+    display.print(label);
+}
+
 bool Display::begin()
 {
     Wire.begin(PIN_OLED_SDA, PIN_OLED_SCL);
@@ -168,109 +285,238 @@ void Display::status(
     display.display();
 }
 
-void Display::renderAmbient(const AppState &state)
+void Display::renderAmbient(
+    const AppState &state)
 {
     display.clearDisplay();
 
-    display.setTextSize(1);
-    display.setCursor(0, 0);
-    display.println("Camper Monitor");
-    display.drawLine(0, 10, 127, 10, SSD1306_WHITE);
-
-    display.setCursor(0, 18);
-    display.println("Ambient");
-
-    display.setTextSize(3);
-    display.setCursor(0, 32);
-    display.print(state.ambientTemperatureF, 1);
-    display.setTextSize(1);
-    display.print(" F");
-
-    display.display();
-}
-
-void Display::renderLTE(const AppState &state)
-{
-    display.clearDisplay();
+    drawHeader("Camper Monitor");
 
     display.setTextSize(1);
-    display.setCursor(0, 0);
-    display.println("LTE Status");
-    display.drawLine(0, 10, 127, 10, SSD1306_WHITE);
 
-    display.setCursor(0, 18);
-    display.print("Network: ");
-    display.println(
-        state.networkConnected ? "Online" : "Offline");
+    display.setCursor(0, 16);
+    display.print("TEMP");
 
-    display.print("Carrier: ");
-    display.println(state.operatorName);
+    display.setCursor(47, 16);
 
-    display.print("Signal: ");
-    if (state.signalQuality == 99)
+    if (state.temperatureValid)
     {
-        display.println("Unknown");
+        display.print(
+            state.ambientTemperatureF,
+            1);
+
+        display.print(" F");
     }
     else
     {
-        display.println(state.signalQuality);
+        display.print("--.- F");
+    }
+
+    display.setCursor(0, 28);
+    display.print("BATT");
+
+    display.setCursor(47, 28);
+
+    if (state.batteryVoltageValid)
+    {
+        display.print(
+            state.batteryVoltage,
+            2);
+
+        display.print(" V");
+    }
+    else
+    {
+        display.print("--.-- V");
+    }
+
+    display.setCursor(0, 40);
+    display.print("POWER");
+
+    display.setCursor(47, 40);
+    display.print(
+        state.shorePowerPresent
+            ? "SHORE"
+            : "BATTERY");
+
+    display.setCursor(0, 53);
+    display.print("LTE");
+
+    drawSignalBars(
+        state.signalQuality,
+        47,
+        51);
+
+    display.setCursor(79, 53);
+
+    if (state.signalQuality == 99)
+    {
+        display.print("--");
+    }
+    else
+    {
+        display.print(state.signalQuality);
     }
 
     display.display();
 }
 
-void Display::renderInternet(const AppState &state)
+void Display::renderLTE(
+    const AppState &state)
 {
     display.clearDisplay();
 
-    display.setTextSize(1);
-    display.setCursor(0, 0);
-    display.println("Internet");
-    display.drawLine(0, 10, 127, 10, SSD1306_WHITE);
+    drawHeader("Connectivity");
 
-    display.setCursor(0, 18);
+    drawConnectionIndicator(
+        0,
+        17,
+        state.networkConnected,
+        "LTE");
 
-    display.print("Data: ");
-    display.println(
-        state.dataConnected ? "Online" : "Offline");
+    drawConnectionIndicator(
+        64,
+        17,
+        state.mqttConnected,
+        "MQTT");
 
-    display.print("MQTT: ");
-    display.println(
-        state.mqttConnected ? "Online" : "Offline");
+    display.setCursor(0, 31);
+    display.print("Signal");
 
-    display.println("IP:");
-    display.println(state.ipAddress);
+    drawSignalBars(
+        state.signalQuality,
+        45,
+        29);
+
+    display.setCursor(78, 31);
+
+    if (state.signalQuality == 99)
+    {
+        display.print("Unknown");
+    }
+    else
+    {
+        display.print(state.signalQuality);
+    }
+
+    display.setCursor(0, 45);
+    display.print("Carrier:");
+
+    display.setCursor(0, 55);
+
+    String carrier = state.operatorName;
+
+    if (carrier.length() > 20)
+    {
+        carrier =
+            carrier.substring(0, 20);
+    }
+
+    display.print(carrier);
 
     display.display();
 }
 
-void Display::renderSystem(const AppState &state)
+void Display::renderInternet(
+    const AppState &state)
 {
+    display.clearDisplay();
+
+    drawHeader("Network");
+
+    display.setCursor(0, 16);
+    display.print("Packet data:");
+
+    display.setCursor(88, 16);
+    display.print(
+        state.dataConnected
+            ? "ON"
+            : "OFF");
+
+    display.setCursor(0, 29);
+    display.print("MQTT:");
+
+    display.setCursor(88, 29);
+    display.print(
+        state.mqttConnected
+            ? "ON"
+            : "OFF");
+
+    display.setCursor(0, 42);
+    display.print("IP address");
+
+    display.setCursor(0, 54);
+
+    String ip = state.ipAddress;
+
+    if (ip.length() > 21)
+    {
+        ip =
+            ip.substring(0, 21);
+    }
+
+    display.print(ip);
+
+    display.display();
+}
+
+void Display::renderSystem(
+    const AppState &state)
+{
+    const unsigned long days =
+        state.uptimeSeconds / 86400UL;
+
     const unsigned long hours =
-        state.uptimeSeconds / 3600UL;
+        (state.uptimeSeconds % 86400UL) /
+        3600UL;
 
     const unsigned long minutes =
-        (state.uptimeSeconds % 3600UL) / 60UL;
+        (state.uptimeSeconds % 3600UL) /
+        60UL;
 
     display.clearDisplay();
 
-    display.setTextSize(1);
-    display.setCursor(0, 0);
-    display.println("System");
-    display.drawLine(0, 10, 127, 10, SSD1306_WHITE);
+    drawHeader("System");
 
-    display.setCursor(0, 18);
-    display.print("Firmware: ");
-    display.println(FW_VERSION);
+    display.setCursor(0, 16);
+    display.print("Firmware");
 
-    display.print("Uptime: ");
+    display.setCursor(68, 16);
+    display.print(FW_VERSION);
+
+    display.setCursor(0, 29);
+    display.print("Uptime");
+
+    display.setCursor(50, 29);
+
+    if (days > 0)
+    {
+        display.print(days);
+        display.print("d ");
+    }
+
     display.print(hours);
     display.print("h ");
     display.print(minutes);
-    display.println("m");
+    display.print("m");
 
-    display.print("Free heap: ");
-    display.println(ESP.getFreeHeap());
+    display.setCursor(0, 42);
+    display.print("Free heap");
+
+    display.setCursor(68, 42);
+    display.print(
+        state.freeHeap / 1024UL);
+
+    display.print(" KB");
+
+    display.setCursor(0, 55);
+    display.print("Heartbeat");
+
+    display.setCursor(68, 55);
+    display.print(
+        state.mqttConnected
+            ? "ACTIVE"
+            : "OFFLINE");
 
     display.display();
 }
