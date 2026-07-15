@@ -5,6 +5,7 @@
 struct AppState
 {
     float ambientTemperatureF = 0.0f;
+    bool temperatureValid = false;
 
     bool networkConnected = false;
     bool dataConnected = false;
@@ -16,4 +17,8 @@ struct AppState
     String ipAddress = "";
 
     unsigned long uptimeSeconds = 0;
+    uint32_t freeHeap;
+    
+    float batteryVoltage = 0.0f;
+    bool batteryVoltageValid = false;
 };

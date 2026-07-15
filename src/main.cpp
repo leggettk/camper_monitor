@@ -7,14 +7,155 @@
 #include "Temperature.h"
 #include "AppState.h"
 #include "Logger.h"
+#include "Battery.h"
 
 AppState state;
 Temperature temp;
+constexpr unsigned long TEMPERATURE_INTERVAL_MS = 5000;
+constexpr unsigned long BATTERY_INTERVAL_MS = 60000;
+constexpr unsigned long MQTT_PUBLISH_INTERVAL_MS = 60000;
+
+void updateTemperature(unsigned long now)
+{
+    static unsigned long lastUpdate = 0;
+
+    if (now - lastUpdate < TEMPERATURE_INTERVAL_MS)
+    {
+        return;
+    }
+
+    lastUpdate = now;
+
+    const float reading = temp.getFahrenheit();
+
+    state.temperatureValid =
+        reading > -100.0f &&
+        reading < 200.0f;
+
+    if (state.temperatureValid)
+    {
+        state.ambientTemperatureF = reading;
+
+        logger.infof(
+            "Ambient temperature: %.1f F",
+            state.ambientTemperatureF);
+    }
+    else
+    {
+        logger.warning("Invalid temperature reading");
+    }
+}
+
+void updateBattery(unsigned long now)
+{
+    static unsigned long lastUpdate = 0;
+
+    if (now - lastUpdate < BATTERY_INTERVAL_MS)
+    {
+        return;
+    }
+
+    lastUpdate = now;
+
+    battery.update();
+
+    state.batteryVoltage =
+        battery.voltage();
+
+    state.batteryVoltageValid =
+        battery.isValid();
+
+    if (state.batteryVoltageValid)
+    {
+        logger.infof(
+            "Camper battery: %.2f V",
+            state.batteryVoltage);
+    }
+}
+
+void updateCommunicationsState(unsigned long now)
+{
+    state.networkConnected =
+        cellular.isNetworkConnected();
+
+    state.dataConnected =
+        cellular.isDataConnected();
+
+    state.mqttConnected =
+        mqtt.isConnected();
+
+    state.signalQuality =
+        cellular.getSignalQuality();
+
+    state.operatorName =
+        cellular.getOperatorName();
+
+    state.ipAddress =
+        cellular.getIpAddress();
+
+    state.uptimeSeconds =
+        now / 1000UL;
+
+    state.freeHeap =
+        ESP.getFreeHeap();
+}
+
+void handleButton()
+{
+    userButton.update();
+
+    if (userButton.wasPressed())
+    {
+        if (oled.isAwake())
+        {
+            oled.nextPage();
+        }
+        else
+        {
+            oled.wake();
+        }
+
+        logger.info("Display button pressed");
+    }
+
+    if (userButton.wasLongPressed())
+    {
+        logger.info("Long press detected");
+
+        oled.status(
+            "Camper Monitor",
+            "MQTT reconnect",
+            "Coming soon");
+    }
+}
+
+void publishTelemetry(unsigned long now)
+{
+    static unsigned long lastPublish = 0;
+
+    if (
+        !state.temperatureValid ||
+        now - lastPublish <
+            MQTT_PUBLISH_INTERVAL_MS)
+    {
+        return;
+    }
+
+    lastPublish = now;
+
+    if (state.mqttConnected)
+    {
+        mqtt.publishAmbient(
+            state.ambientTemperatureF);
+    }
+}
 
 void setup()
 {
     logger.begin(115200, LogLevel::Info);
     delay(500);
+
+    battery.begin();
 
     if (!oled.begin())
     {
@@ -52,83 +193,16 @@ void setup()
 
 void loop()
 {
-    mqtt.loop();
-    userButton.update();
-
-    static unsigned long lastTemperatureRead = 0;
-    static unsigned long lastPublish = 0;
-
-    static float ambientTemperatureF = 0.0f;
-
     const unsigned long now = millis();
 
-    if (userButton.wasPressed())
-    {
-        if (oled.isAwake())
-        {
-            oled.nextPage();
-        }
-        else
-        {
-            oled.wake();
-        }
+    mqtt.loop();
 
-        Serial.println("Display button pressed.");
-    }
-
-    if (userButton.wasLongPressed())
-    {
-        Serial.println("Long press detected.");
-        Serial.println("MQTT reconnect will be added later.");
-
-        oled.status(
-            "Camper Monitor",
-            "MQTT reconnect",
-            "Not available yet");
-    }
-
-    if (now - lastTemperatureRead >= 5000)
-    {
-        lastTemperatureRead = now;
-
-        ambientTemperatureF =
-            temp.getFahrenheit();
-
-        logger.infof(
-            "Ambient temperature: %.1f F\n",
-            state.ambientTemperatureF);
-    }
-
-state.ambientTemperatureF = ambientTemperatureF;
-
-state.networkConnected = cellular.isNetworkConnected();
-state.dataConnected = cellular.isDataConnected();
-state.mqttConnected = mqtt.isConnected();
-
-state.signalQuality = cellular.getSignalQuality();
-state.operatorName = cellular.getOperatorName();
-state.ipAddress = cellular.getIpAddress();
-
-state.uptimeSeconds = millis() / 1000UL;
-
-
+    handleButton();
+    updateTemperature(now);
+    updateBattery(now);
+    updateCommunicationsState(now);
 
     oled.update(state);
 
-    if (now - lastPublish >= 30000)
-    {
-        lastPublish = now;
-
-        if (mqtt.publishAmbient(
-                state.ambientTemperatureF))
-        {
-            Serial.println(
-                "Published temperature");
-        }
-        else
-        {
-            Serial.println(
-                "Temperature publish failed");
-        }
-    }
+    publishTelemetry(now);
 }

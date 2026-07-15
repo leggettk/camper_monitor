@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include <PubSubClient.h>
 #include <SSLClient.h>
 #include <TinyGsmClient.h>
@@ -9,6 +10,7 @@
 #include "Pins.h"
 #include "Secrets.h"
 #include "TrustAnchors.h"
+#include "Version.h"
 
 // Working SIM7000 TCP transport.
 TinyGsmClient cellularClient(gsm);
@@ -32,6 +34,9 @@ constexpr char STATUS_TOPIC[] =
 
 constexpr char AMBIENT_TOPIC[] =
     "rvmonitor/camper01/temperature/ambient";
+
+constexpr char AMBIENT_DISCOVERY_TOPIC[] =
+    "homeassistant/sensor/camper01_ambient/config";
 }
 
 bool MQTT::begin()
@@ -39,7 +44,7 @@ bool MQTT::begin()
     mqttClient.setServer(MQTT_HOST, MQTT_PORT);
     mqttClient.setKeepAlive(60);
     mqttClient.setSocketTimeout(30);
-    mqttClient.setBufferSize(512);
+    mqttClient.setBufferSize(1024);
 
     return connect();
 }
@@ -52,7 +57,7 @@ bool MQTT::connect()
         return false;
     }
     tlsClient.stop();
-    
+
     logger.infof(
         "Connecting to MQTT TLS broker %s:%u",
         MQTT_HOST,
@@ -76,13 +81,25 @@ bool MQTT::connect()
         tlsClient.stop();
         return false;
     }
-
+    if (!discoveryPublished)
+    {
+            if (publishDiscovery())
+            {
+                discoveryPublished = true;
+            }
+    }
     mqttClient.publish(
         STATUS_TOPIC,
         "online",
         true);
 
     logger.info("MQTT TLS connected");
+
+    if (!publishDiscovery())
+    {
+        logger.warning(
+        "Ambient discovery publish failed");
+    }
     return true;
 }
 
@@ -121,6 +138,7 @@ bool MQTT::publishAmbient(float temperatureF)
     {
         logger.warning(
             "Ambient publish skipped: MQTT offline");
+
         return false;
     }
 
@@ -145,8 +163,85 @@ bool MQTT::publishAmbient(float temperatureF)
     }
     else
     {
+        logger.errorf(
+            "Ambient publish failed, MQTT state=%d, connected=%s",
+            mqttClient.state(),
+            mqttClient.connected() ? "yes" : "no");
+    }
+
+    return published;
+}
+bool MQTT::publishDiscovery()
+{
+    if (!mqttClient.connected())
+    {
+        return false;
+    }
+
+    JsonDocument document;
+
+    document["name"] = "Ambient Temperature";
+    document["unique_id"] = "camper01_ambient_temperature";
+    document["default_entity_id"] =
+        "sensor.camper_ambient_temperature";
+
+    document["state_topic"] = AMBIENT_TOPIC;
+    document["availability_topic"] = STATUS_TOPIC;
+
+    document["payload_available"] = "online";
+    document["payload_not_available"] = "offline";
+
+    document["device_class"] = "temperature";
+    document["state_class"] = "measurement";
+    document["unit_of_measurement"] = "\xC2\xB0"
+                                      "F";
+
+    JsonObject device =
+        document["device"].to<JsonObject>();
+
+    JsonArray identifiers =
+        device["identifiers"].to<JsonArray>();
+
+    identifiers.add("camper_monitor_01");
+
+    device["name"] = "Camper Monitor";
+    device["manufacturer"] = "DIY";
+    device["model"] = "LILYGO T-SIM7000G";
+    device["sw_version"] = FW_VERSION;
+
+    char payload[768];
+
+    const size_t payloadLength =
+        serializeJson(
+            document,
+            payload,
+            sizeof(payload));
+
+    if (
+        payloadLength == 0 ||
+        payloadLength >= sizeof(payload))
+    {
         logger.error(
-            "Ambient temperature publish failed");
+            "Discovery JSON buffer is too small");
+
+        return false;
+    }
+
+    const bool published =
+        mqttClient.publish(
+            AMBIENT_DISCOVERY_TOPIC,
+            payload,
+            true);
+
+    if (published)
+    {
+        logger.info(
+            "Published ambient MQTT discovery");
+    }
+    else
+    {
+        logger.error(
+            "Failed to publish ambient MQTT discovery");
     }
 
     return published;

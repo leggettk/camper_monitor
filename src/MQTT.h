@@ -11,6 +11,8 @@ public:
 
 private:
     bool connect();
+    bool publishDiscovery();
+    bool discoveryPublished = false;
     unsigned long lastReconnectAttemptMs = 0;
 
     static constexpr unsigned long RECONNECT_INTERVAL_MS = 30000;

@@ -7,7 +7,7 @@
 // -----------------------------------------------------------------------------
 
 #define FW_NAME        "Camper Monitor"
-#define FW_VERSION     "0.2.0"
+#define FW_VERSION     "0.4.0"
 
 constexpr uint8_t SCREEN_WIDTH  = 128;
 constexpr uint8_t SCREEN_HEIGHT = 64;
