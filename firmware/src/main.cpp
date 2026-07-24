@@ -11,7 +11,9 @@
 #include "ShorePower.h"
 #include "Config.h"
 #include "SMS.h"
+#include "settings.h"
 
+Settings settings;
 AppState state;
 Temperature temp;
 //constexpr unsigned long TEMPERATURE_INTERVAL_MS = 5000;
@@ -325,6 +327,30 @@ void setup()
 
     battery.begin();
     shorePower.begin();
+
+if (settings.begin())
+{
+    logger.info("Settings loaded");
+
+  const DeviceSettings& config = settings.get();
+
+    logger.info(
+        String("Device: ") + config.deviceName
+    );
+
+    logger.info(
+        String("Hostname: ") + config.hostname
+    );
+
+    logger.info(
+        String("WiFi configured: ") +
+        (config.wifiSSID.isEmpty() ? "No" : "Yes")
+    );
+}
+else
+{
+    logger.error("Settings initialization failed");
+}
 
     if (!oled.begin())
     {
