@@ -12,10 +12,12 @@
 #include "Config.h"
 #include "SMS.h"
 #include "settings.h"
+#include "WiFiService.h"
 
 Settings settings;
 AppState state;
 Temperature temp;
+WiFiService wifi;
 //constexpr unsigned long TEMPERATURE_INTERVAL_MS = 5000;
 constexpr unsigned long BATTERY_INTERVAL_MS = 60000;
 //constexpr unsigned long MQTT_PUBLISH_INTERVAL_MS = 60000;
@@ -332,6 +334,8 @@ if (settings.begin())
 {
     logger.info("Settings loaded");
 
+    wifi.begin(settings);
+
   const DeviceSettings& config = settings.get();
 
     logger.info(
@@ -393,7 +397,7 @@ void loop()
     const unsigned long now = millis();
 
     mqtt.loop();
-
+    wifi.update();
     handleButton();
     updateTemperature(now);
     updateBattery(now);
