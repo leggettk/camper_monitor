@@ -130,7 +130,9 @@ bool Display::begin()
 
     if (!display.begin(
             SSD1306_SWITCHCAPVCC,
-            OLED_ADDRESS))
+            OLED_ADDRESS,
+            true,
+            false))
     {
         return false;
     }

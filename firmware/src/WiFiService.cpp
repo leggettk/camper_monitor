@@ -1,8 +1,9 @@
 #include "WiFiService.h"
 
-bool WiFiService::begin(Settings& settings)
+bool WiFiService::begin(Settings& settings, Logger& logger)
 {
     settings_ = &settings;
+    logger_ = &logger;
 
     WiFi.mode(WIFI_STA);
 
@@ -23,21 +24,30 @@ void WiFiService::update()
 
     if (isConnected && !wasConnected_)
     {
-        Serial.println("WiFi connected!");
+        if (logger_ != nullptr)
+        {
+            logger_->info("WiFi connected");
 
-        Serial.print("SSID: ");
-        Serial.println(ssid());
+            logger_->info(
+                String("WiFi SSID: ") +
+                ssid());
 
-        Serial.print("IP Address: ");
-        Serial.println(ipAddress());
+            logger_->info(
+                String("WiFi IP: ") +
+                ipAddress());
 
-        Serial.print("RSSI: ");
-        Serial.print(rssi());
-        Serial.println(" dBm");
+            logger_->info(
+                String("WiFi RSSI: ") +
+                String(rssi()) +
+                " dBm");
+        }
     }
     else if (!isConnected && wasConnected_)
     {
-        Serial.println("WiFi disconnected");
+        if (logger_ != nullptr)
+        {
+            logger_->warning("WiFi disconnected");
+        }
     }
 
     wasConnected_ = isConnected;
@@ -75,8 +85,12 @@ void WiFiService::connect()
 
     WiFi.setHostname(config.hostname.c_str());
 
-    Serial.print("WiFi: Connecting to ");
-    Serial.println(config.wifiSSID);
+    if (logger_ != nullptr)
+    {
+        logger_->info(
+            String("WiFi: Connecting to ") +
+            config.wifiSSID);
+    }
 
     WiFi.begin(
         config.wifiSSID.c_str(),

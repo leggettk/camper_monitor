@@ -334,7 +334,7 @@ if (settings.begin())
 {
     logger.info("Settings loaded");
 
-    wifi.begin(settings);
+    wifi.begin(settings, logger);
 
   const DeviceSettings& config = settings.get();
 

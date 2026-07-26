@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
-
+#include "Logger.h"
 #include "Settings.h"
 
 class WiFiService
@@ -10,7 +10,7 @@ class WiFiService
 public:
     // Initializes Wi-Fi station mode and begins a connection attempt
     // using the credentials stored in Settings.
-    bool begin(Settings& settings);
+    bool begin(Settings& settings, Logger& logger);
 
     // Handles non-blocking reconnect attempts.
     void update();
@@ -33,7 +33,7 @@ public:
 
 private:
 
-
+    Logger* logger_ = nullptr;
     Settings* settings_ = nullptr;
     bool wasConnected_ = false;
     bool started_ = false;
