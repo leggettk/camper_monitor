@@ -509,39 +509,39 @@ bool MQTT::publishHeartbeat(const AppState &state)
     JsonDocument document;
 
     document["status"] = "online";
-    document["uptime_seconds"] = state.uptimeSeconds;
-    document["free_heap"] = state.freeHeap;
-    document["signal_quality"] = state.signalQuality;
+    document["uptime_seconds"] = state.system.uptimeSeconds;
+    document["free_heap"] = state.system.freeHeap;
+    document["signal_quality"] = state.cellular.signalQuality;
 
     document["network_connected"] =
-        state.networkConnected;
+        state.cellular.networkConnected;
 
     document["data_connected"] =
-        state.dataConnected;
+        state.cellular.dataConnected;
 
     document["mqtt_connected"] =
-        state.mqttConnected;
+        state.mqtt.connected;
 
-    if (state.temperatureValid)
+    if (state.temperature.valid)
     {
         document["ambient_temperature_f"] =
-            state.ambientTemperatureF;
+            state.temperature.ambientF;
     }
 
-    if (state.batteryVoltageValid)
+    if (state.power.batteryVoltageValid)
     {
         document["battery_voltage"] =
-            state.batteryVoltage;
+            state.power.batteryVoltage;
     }
 
     document["shore_power"] =
-        state.shorePowerPresent;
+        state.power.shorePowerPresent;
 
     document["operator"] =
-        state.operatorName;
+        state.cellular.operatorName;
 
     document["ip_address"] =
-        state.ipAddress;
+        state.cellular.ipAddress;
 
     document["firmware"] =
         FW_VERSION;
@@ -574,8 +574,8 @@ bool MQTT::publishHeartbeat(const AppState &state)
     {
         logger.infof(
             "Published heartbeat: uptime=%lus, heap=%lu",
-            state.uptimeSeconds,
-            state.freeHeap);
+            state.system.uptimeSeconds,
+            state.system.freeHeap);
     }
     else
     {

@@ -301,10 +301,10 @@ void Display::renderAmbient(
 
     display.setCursor(47, 16);
 
-    if (state.temperatureValid)
+    if (state.temperature.valid)
     {
         display.print(
-            state.ambientTemperatureF,
+            state.temperature.ambientF,
             1);
 
         display.print(" F");
@@ -319,10 +319,10 @@ void Display::renderAmbient(
 
     display.setCursor(47, 28);
 
-    if (state.batteryVoltageValid)
+    if (state.power.batteryVoltageValid)
     {
         display.print(
-            state.batteryVoltage,
+            state.power.batteryVoltage,
             2);
 
         display.print(" V");
@@ -337,7 +337,7 @@ void Display::renderAmbient(
 
     display.setCursor(47, 40);
     display.print(
-        state.shorePowerPresent
+        state.power.shorePowerPresent
             ? "SHORE"
             : "BATTERY");
 
@@ -345,19 +345,19 @@ void Display::renderAmbient(
     display.print("LTE");
 
     drawSignalBars(
-        state.signalQuality,
+        state.cellular.signalQuality,
         47,
         51);
 
     display.setCursor(79, 53);
 
-    if (state.signalQuality == 99)
+    if (state.cellular.signalQuality == 99)
     {
         display.print("--");
     }
     else
     {
-        display.print(state.signalQuality);
+        display.print(state.cellular.signalQuality);
     }
 
     display.display();
@@ -373,32 +373,32 @@ void Display::renderLTE(
     drawConnectionIndicator(
         0,
         17,
-        state.networkConnected,
+        state.cellular.networkConnected,
         "LTE");
 
     drawConnectionIndicator(
         64,
         17,
-        state.mqttConnected,
+        state.mqtt.connected,
         "MQTT");
 
     display.setCursor(0, 31);
     display.print("Signal");
 
     drawSignalBars(
-        state.signalQuality,
+        state.cellular.signalQuality,
         45,
         29);
 
     display.setCursor(78, 31);
 
-    if (state.signalQuality == 99)
+    if (state.cellular.signalQuality == 99)
     {
         display.print("Unknown");
     }
     else
     {
-        display.print(state.signalQuality);
+        display.print(state.cellular.signalQuality);
     }
 
     display.setCursor(0, 45);
@@ -406,7 +406,7 @@ void Display::renderLTE(
 
     display.setCursor(0, 55);
 
-    String carrier = state.operatorName;
+    String carrier = state.cellular.operatorName;
 
     if (carrier.length() > 20)
     {
@@ -431,7 +431,7 @@ void Display::renderInternet(
 
     display.setCursor(88, 16);
     display.print(
-        state.dataConnected
+        state.cellular.dataConnected
             ? "ON"
             : "OFF");
 
@@ -440,7 +440,7 @@ void Display::renderInternet(
 
     display.setCursor(88, 29);
     display.print(
-        state.mqttConnected
+        state.mqtt.connected
             ? "ON"
             : "OFF");
 
@@ -449,7 +449,7 @@ void Display::renderInternet(
 
     display.setCursor(0, 54);
 
-    String ip = state.ipAddress;
+    String ip = state.cellular.ipAddress;
 
     if (ip.length() > 21)
     {
@@ -466,14 +466,14 @@ void Display::renderSystem(
     const AppState &state)
 {
     const unsigned long days =
-        state.uptimeSeconds / 86400UL;
+        state.system.uptimeSeconds / 86400UL;
 
     const unsigned long hours =
-        (state.uptimeSeconds % 86400UL) /
+        (state.system.uptimeSeconds % 86400UL) /
         3600UL;
 
     const unsigned long minutes =
-        (state.uptimeSeconds % 3600UL) /
+        (state.system.uptimeSeconds % 3600UL) /
         60UL;
 
     display.clearDisplay();
@@ -507,7 +507,7 @@ void Display::renderSystem(
 
     display.setCursor(68, 42);
     display.print(
-        state.freeHeap / 1024UL);
+        state.system.freeHeap / 1024UL);
 
     display.print(" KB");
 
@@ -516,7 +516,7 @@ void Display::renderSystem(
 
     display.setCursor(68, 55);
     display.print(
-        state.mqttConnected
+        state.mqtt.connected
             ? "ACTIVE"
             : "OFFLINE");
 

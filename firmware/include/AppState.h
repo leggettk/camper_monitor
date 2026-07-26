@@ -2,29 +2,74 @@
 
 #include <Arduino.h>
 
-struct AppState
+struct TemperatureState
 {
-    float ambientTemperatureF = 0.0f;
-    bool temperatureValid = false;
+    float ambientF = 0.0f;
+    bool valid = false;
+};
 
+struct PowerState
+{
+    float batteryVoltage = 0.0f;
+    bool batteryVoltageValid = false;
+
+    bool shorePowerPresent = false;
+};
+
+struct WiFiState
+{
+    bool connected = false;
+
+    String ssid;
+    String ipAddress = "No IP";
+
+    int32_t rssi = 0;
+};
+
+struct CellularState
+{
     bool networkConnected = false;
     bool dataConnected = false;
-    bool mqttConnected = false;
 
     int signalQuality = 99;
 
     String operatorName = "Unknown";
     String ipAddress = "No IP";
+};
 
-    unsigned long uptimeSeconds = 0;
+struct MQTTState
+{
+    bool connected = false;
+};
+
+struct AlarmState
+{
+    bool highTemperature = false;
+    bool shorePower = false;
+};
+
+struct SmsState
+{
+    bool lastSuccessful = false;
+    uint32_t lastSentTimeSeconds = 0;
+};
+
+struct SystemState
+{
+    uint32_t uptimeSeconds = 0;
     uint32_t freeHeap = 0;
-    
-    float batteryVoltage = 0.0f;
-    bool batteryVoltageValid = false;
-    bool shorePowerPresent = false;
-    bool highTemperatureAlarm = false;
-    bool shorePowerAlarm = false;
+};
 
-    bool lastSmsSuccessful = false;
-    unsigned long lastSmsTimeSeconds = 0;
+struct AppState
+{
+    TemperatureState temperature;
+    PowerState power;
+
+    WiFiState wifi;
+    CellularState cellular;
+    MQTTState mqtt;
+
+    AlarmState alarms;
+    SmsState sms;
+    SystemState system;
 };

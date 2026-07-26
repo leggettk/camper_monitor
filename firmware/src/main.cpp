@@ -13,11 +13,13 @@
 #include "SMS.h"
 #include "settings.h"
 #include "WiFiService.h"
+#include "WebServerService.h"
 
 Settings settings;
 AppState state;
 Temperature temp;
 WiFiService wifi;
+WebServerService web;
 //constexpr unsigned long TEMPERATURE_INTERVAL_MS = 5000;
 constexpr unsigned long BATTERY_INTERVAL_MS = 60000;
 //constexpr unsigned long MQTT_PUBLISH_INTERVAL_MS = 60000;
@@ -35,17 +37,17 @@ void updateTemperature(unsigned long now)
 
     const float reading = temp.getFahrenheit();
 
-    state.temperatureValid =
+    state.temperature.valid =
         reading > -100.0f &&
         reading < 200.0f;
 
-    if (state.temperatureValid)
+    if (state.temperature.valid)
     {
-        state.ambientTemperatureF = reading;
+        state.temperature.ambientF = reading;
 
         logger.infof(
             "Ambient temperature: %.1f F",
-            state.ambientTemperatureF);
+            state.temperature.ambientF);
     }
     else
     {
@@ -66,44 +68,44 @@ void updateBattery(unsigned long now)
 
     battery.update();
 
-    state.batteryVoltage =
+    state.power.batteryVoltage =
         battery.voltage();
 
-    state.batteryVoltageValid =
+    state.power.batteryVoltageValid =
         battery.isValid();
 
-    if (state.batteryVoltageValid)
+    if (state.power.batteryVoltageValid)
     {
         logger.infof(
             "Camper battery: %.2f V",
-            state.batteryVoltage);
+            state.power.batteryVoltage);
     }
 }
 
 void updateCommunicationsState(unsigned long now)
 {
-    state.networkConnected =
+    state.cellular.networkConnected =
         cellular.isNetworkConnected();
 
-    state.dataConnected =
+    state.cellular.dataConnected =
         cellular.isDataConnected();
 
-    state.mqttConnected =
+    state.mqtt.connected =
         mqtt.isConnected();
 
-    state.signalQuality =
+    state.cellular.signalQuality =
         cellular.getSignalQuality();
 
-    state.operatorName =
+    state.cellular.operatorName =
         cellular.getOperatorName();
 
-    state.ipAddress =
+    state.cellular.ipAddress =
         cellular.getIpAddress();
 
-    state.uptimeSeconds =
+    state.system.uptimeSeconds =
         now / 1000UL;
 
-    state.freeHeap =
+    state.system.freeHeap =
         ESP.getFreeHeap();
 }
 
@@ -141,7 +143,7 @@ void publishTelemetry(unsigned long now)
     static unsigned long lastPublish = 0;
 
     if (
-        !state.temperatureValid ||
+        !state.temperature.valid ||
         now - lastPublish <
             MQTT_PUBLISH_INTERVAL_MS)
     {
@@ -150,10 +152,10 @@ void publishTelemetry(unsigned long now)
 
     lastPublish = now;
 
-    if (state.mqttConnected)
+    if (state.mqtt.connected)
     {
         mqtt.publishAmbient(
-            state.ambientTemperatureF);
+            state.temperature.ambientF);
     }
 }
 
@@ -163,7 +165,7 @@ void updateShorePower()
 
     shorePower.update();
 
-    state.shorePowerPresent =
+    state.power.shorePowerPresent =
         shorePower.isPresent();
 
     // Prevent a false "power lost" SMS during startup.
@@ -171,8 +173,8 @@ void updateShorePower()
     {
         initialized = true;
 
-        state.shorePowerAlarm =
-            !state.shorePowerPresent;
+        state.alarms.shorePower =
+            !state.power.shorePowerPresent;
 
         return;
     }
@@ -183,22 +185,22 @@ void updateShorePower()
     }
 
     mqtt.publishShorePower(
-        state.shorePowerPresent);
+        state.power.shorePowerPresent);
 
-    if (!state.shorePowerPresent)
+    if (!state.power.shorePowerPresent)
     {
         logger.warning("Shore power lost");
 
-        state.shorePowerAlarm = true;
+        state.alarms.shorePower = true;
 
-        state.lastSmsSuccessful =
+        state.sms.lastSuccessful =
             sms.sendShorePowerLost(
-                state.batteryVoltage,
-                state.batteryVoltageValid);
+                state.power.batteryVoltage,
+                state.power.batteryVoltageValid);
 
-        if (state.lastSmsSuccessful)
+        if (state.sms.lastSuccessful)
         {
-            state.lastSmsTimeSeconds =
+            state.sms.lastSentTimeSeconds =
                 millis() / 1000UL;
         }
     }
@@ -206,14 +208,14 @@ void updateShorePower()
     {
         logger.info("Shore power restored");
 
-        state.shorePowerAlarm = false;
+        state.alarms.shorePower = false;
 
-        state.lastSmsSuccessful =
+        state.sms.lastSuccessful =
             sms.sendShorePowerRestored();
 
-        if (state.lastSmsSuccessful)
+        if (state.sms.lastSuccessful)
         {
-            state.lastSmsTimeSeconds =
+            state.sms.lastSentTimeSeconds =
                 millis() / 1000UL;
         }
     }
@@ -223,16 +225,16 @@ void updateTemperatureAlarm(unsigned long now)
 {
     static unsigned long highTemperatureSince = 0;
 
-    if (!state.temperatureValid)
+    if (!state.temperature.valid)
     {
         highTemperatureSince = 0;
         return;
     }
 
-    if (!state.highTemperatureAlarm)
+    if (!state.alarms.highTemperature)
     {
         if (
-            state.ambientTemperatureF >=
+            state.temperature.ambientF >=
             TEMP_HIGH_ALARM_F)
         {
             if (highTemperatureSince == 0)
@@ -247,21 +249,21 @@ void updateTemperatureAlarm(unsigned long now)
                 now - highTemperatureSince >=
                 TEMP_ALARM_DELAY_MS)
             {
-                state.highTemperatureAlarm = true;
+                state.alarms.highTemperature = true;
                 highTemperatureSince = 0;
 
                 logger.errorf(
                     "High-temperature alarm: %.1f F",
-                    state.ambientTemperatureF);
+                    state.temperature.ambientF);
 
-                state.lastSmsSuccessful =
+                state.sms.lastSuccessful =
                     sms.sendHighTemperature(
-                        state.ambientTemperatureF,
+                        state.temperature.ambientF,
                         TEMP_HIGH_ALARM_F);
 
-                if (state.lastSmsSuccessful)
+                if (state.sms.lastSuccessful)
                 {
-                    state.lastSmsTimeSeconds =
+                    state.sms.lastSentTimeSeconds =
                         now / 1000UL;
                 }
             }
@@ -277,22 +279,22 @@ void updateTemperatureAlarm(unsigned long now)
     // Alarm is already active. Reset only after cooling
     // below the lower reset threshold.
     if (
-        state.ambientTemperatureF <=
+        state.temperature.ambientF <=
         TEMP_HIGH_RESET_F)
     {
-        state.highTemperatureAlarm = false;
+        state.alarms.highTemperature = false;
 
         logger.infof(
             "Temperature alarm cleared: %.1f F",
-            state.ambientTemperatureF);
+            state.temperature.ambientF);
 
-        state.lastSmsSuccessful =
+        state.sms.lastSuccessful =
             sms.sendTemperatureNormal(
-                state.ambientTemperatureF);
+                state.temperature.ambientF);
 
-        if (state.lastSmsSuccessful)
+        if (state.sms.lastSuccessful)
         {
-            state.lastSmsTimeSeconds =
+            state.sms.lastSentTimeSeconds =
                 now / 1000UL;
         }
     }
@@ -311,7 +313,7 @@ void publishHeartbeat(unsigned long now)
 
     lastHeartbeat = now;
 
-    if (state.mqttConnected)
+    if (state.mqtt.connected)
     {
         mqtt.publishHeartbeat(state);
     }
@@ -335,6 +337,7 @@ if (settings.begin())
     logger.info("Settings loaded");
 
     wifi.begin(settings, logger);
+    web.begin(settings, logger);
 
   const DeviceSettings& config = settings.get();
 
@@ -398,6 +401,7 @@ void loop()
 
     mqtt.loop();
     wifi.update();
+    web.update();
     handleButton();
     updateTemperature(now);
     updateBattery(now);
