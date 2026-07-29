@@ -14,12 +14,14 @@
 #include "settings.h"
 #include "WiFiService.h"
 #include "WebServerService.h"
+#include "OTAService.h"
 
 Settings settings;
 AppState state;
 Temperature temp;
 WiFiService wifi;
-WebServerService web;
+WebServerService webServerService;
+OTAService otaService;
 //constexpr unsigned long TEMPERATURE_INTERVAL_MS = 5000;
 constexpr unsigned long BATTERY_INTERVAL_MS = 60000;
 //constexpr unsigned long MQTT_PUBLISH_INTERVAL_MS = 60000;
@@ -336,8 +338,8 @@ if (settings.begin())
 {
     logger.info("Settings loaded");
 
-    wifi.begin(settings, logger);
-    web.begin(settings, logger);
+    wifi.begin(settings, state, logger);
+    webServerService.begin(settings, state, logger, otaService);
 
   const DeviceSettings& config = settings.get();
 
@@ -401,7 +403,7 @@ void loop()
 
     mqtt.loop();
     wifi.update();
-    web.update();
+    webServerService.update();
     handleButton();
     updateTemperature(now);
     updateBattery(now);

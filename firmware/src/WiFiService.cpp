@@ -1,9 +1,11 @@
 #include "WiFiService.h"
+AppState* appState_= nullptr;
 
-bool WiFiService::begin(Settings& settings, Logger& logger)
+bool WiFiService::begin(Settings& settings, AppState& appState, Logger& logger)
 {
     settings_ = &settings;
     logger_ = &logger;
+    appState_ = &appState;
 
     WiFi.mode(WIFI_STA);
 
@@ -41,6 +43,11 @@ void WiFiService::update()
                 String(rssi()) +
                 " dBm");
         }
+        appState_->wifi.connected = true;
+        appState_->wifi.ssid = WiFi.SSID();
+        appState_->wifi.ipAddress =
+        WiFi.localIP().toString();
+        appState_->wifi.rssi = WiFi.RSSI();
     }
     else if (!isConnected && wasConnected_)
     {
@@ -48,12 +55,24 @@ void WiFiService::update()
         {
             logger_->warning("WiFi disconnected");
         }
+        appState_->wifi.connected = false;
+        appState_->wifi.ipAddress = "No IP";
+        appState_->wifi.rssi = 0;
     }
 
     wasConnected_ = isConnected;
 
     if (isConnected)
     {
+        if (WiFi.status() == WL_CONNECTED &&
+    appState_ != nullptr)
+{
+    appState_->wifi.connected = true;
+    appState_->wifi.ssid = WiFi.SSID();
+    appState_->wifi.ipAddress =
+        WiFi.localIP().toString();
+    appState_->wifi.rssi = WiFi.RSSI();
+}
         return;
     }
 

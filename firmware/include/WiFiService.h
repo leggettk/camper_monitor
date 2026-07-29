@@ -4,13 +4,14 @@
 #include <WiFi.h>
 #include "Logger.h"
 #include "Settings.h"
+#include "AppState.h"
 
 class WiFiService
 {
 public:
     // Initializes Wi-Fi station mode and begins a connection attempt
     // using the credentials stored in Settings.
-    bool begin(Settings& settings, Logger& logger);
+    bool begin(Settings& settings, AppState& appState, Logger& logger);
 
     // Handles non-blocking reconnect attempts.
     void update();
