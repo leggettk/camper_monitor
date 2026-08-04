@@ -92,96 +92,181 @@ void WebServerService::handleHome()
         return;
     }
 
+    const AppState& state = *appState_;
+
+    StatusLevel overallLevel = StatusLevel::Normal;
+    String overallTitle = "Camper status is healthy";
+    String overallMessage =
+        "All monitored systems are operating normally.";
+
+    if (state.alarms.highTemperature ||
+        state.alarms.shorePower)
+    {
+        overallLevel = StatusLevel::Critical;
+        overallTitle = "Camper needs attention";
+
+        if (state.alarms.highTemperature &&
+            state.alarms.shorePower)
+        {
+            overallMessage =
+                "High temperature and shore-power loss detected.";
+        }
+        else if (state.alarms.highTemperature)
+        {
+            overallMessage =
+                "The ambient temperature alarm is active.";
+        }
+        else
+        {
+            overallMessage =
+                "Shore power has been lost.";
+        }
+    }
+    else if (!state.mqtt.connected ||
+             !state.cellular.dataConnected)
+    {
+        overallLevel = StatusLevel::Warning;
+        overallTitle = "Camper has a connectivity warning";
+        overallMessage =
+            "Monitoring is active, but one or more remote services are offline.";
+    }
+
     WebPageBuilder page;
 
     page.begin(
         PROJECT_NAME,
         PROJECT_NAME,
-        String("Know your camper. Anywhere. · ") + PROJECT_VERSION,
-        5);
+        "Know your camper. Anywhere.",
+        10);
+
+    page.addNavigation("dashboard");
+
+    page.addHealthBanner(
+        overallTitle,
+        overallMessage,
+        overallLevel);
+
+    page.beginGrid();
+
+    page.addMetricCard(
+        "Ambient",
+        formatTemperature(),
+        state.temperature.valid
+            ? "Interior temperature"
+            : "Sensor unavailable",
+        state.alarms.highTemperature
+            ? StatusLevel::Critical
+            : state.temperature.valid
+                ? StatusLevel::Normal
+                : StatusLevel::Neutral);
+
+    page.addMetricCard(
+        "Battery",
+        formatBatteryVoltage(),
+        state.power.batteryVoltageValid
+            ? "Backup power"
+            : "Reading unavailable",
+        state.power.batteryVoltageValid
+            ? StatusLevel::Normal
+            : StatusLevel::Neutral);
+
+    page.addMetricCard(
+        "Power",
+        state.power.shorePowerPresent
+            ? "Shore"
+            : "Battery",
+        state.power.shorePowerPresent
+            ? "External power present"
+            : "Running on backup",
+        state.power.shorePowerPresent
+            ? StatusLevel::Normal
+            : StatusLevel::Critical);
+
+    page.endGrid();
 
     page.beginCard("Connectivity");
 
     page.addStatus(
         "Wi-Fi",
-        appState_->wifi.connected
-            ? appState_->wifi.ssid
+        state.wifi.connected
+            ? "Connected"
             : "Disconnected",
-        appState_->wifi.connected);
-
-    page.addStatus(
-        "Wi-Fi IP",
-        appState_->wifi.connected
-            ? appState_->wifi.ipAddress
-            : "No IP",
-        appState_->wifi.connected);
+        state.wifi.connected
+            ? StatusLevel::Normal
+            : StatusLevel::Neutral);
 
     page.addStatus(
         "LTE Network",
-        appState_->cellular.networkConnected
-            ? appState_->cellular.operatorName
+        state.cellular.networkConnected
+            ? "Connected"
             : "Disconnected",
-        appState_->cellular.networkConnected);
+        state.cellular.networkConnected
+            ? StatusLevel::Normal
+            : StatusLevel::Critical);
 
     page.addStatus(
-        "LTE Data",
-        appState_->cellular.dataConnected
-            ? appState_->cellular.ipAddress
+        "Cellular Data",
+        state.cellular.dataConnected
+            ? "Connected"
             : "Disconnected",
-        appState_->cellular.dataConnected);
+        state.cellular.dataConnected
+            ? StatusLevel::Normal
+            : StatusLevel::Critical);
 
     page.addStatus(
         "MQTT",
-        appState_->mqtt.connected
+        state.mqtt.connected
             ? "Connected"
             : "Disconnected",
-        appState_->mqtt.connected);
+        state.mqtt.connected
+            ? StatusLevel::Normal
+            : StatusLevel::Warning);
 
     page.endCard();
 
-    page.beginCard("Sensors");
+    page.beginCard("Firmware");
+
+    page.addValue(
+        "Version",
+        PROJECT_VERSION);
+
+    page.addValue(
+        "Build",
+        String(__DATE__) + " " + __TIME__);
 
     page.addStatus(
-        "Ambient Temperature",
-        formatTemperature(),
-        appState_->temperature.valid &&
-            !appState_->alarms.highTemperature);
-
-    page.addStatus(
-        "Battery",
-        formatBatteryVoltage(),
-        appState_->power.batteryVoltageValid);
-
-    page.addStatus(
-        "Shore Power",
-        appState_->power.shorePowerPresent
-            ? "Present"
-            : "Not Present",
-        appState_->power.shorePowerPresent &&
-            !appState_->alarms.shorePower);
+        "OTA Updates",
+        "Enabled",
+        StatusLevel::Normal);
 
     page.endCard();
 
     page.beginCard("System");
 
-    page.addStatus(
+    page.addValue(
         "Uptime",
-        formatUptime(appState_->system.uptimeSeconds),
-        true);
+        formatUptime(
+            state.system.uptimeSeconds));
 
-    page.addStatus(
+    page.addValue(
         "Free Heap",
-        formatFreeHeap(appState_->system.freeHeap),
-        appState_->system.freeHeap > 20000);
+        formatFreeHeap(
+            state.system.freeHeap));
 
-    page.addStatus(
-        "Last SMS",
-        appState_->sms.lastSuccessful
-            ? "Successful"
-            : "None / Failed",
-        appState_->sms.lastSuccessful);
+    page.addValue(
+        "Active Connection",
+        state.wifi.connected
+            ? "Wi-Fi"
+            : state.cellular.dataConnected
+                ? "Cellular"
+                : "Offline");
 
     page.endCard();
+
+    page.addFooter(
+        PROJECT_VERSION,
+        formatUptime(
+            state.system.uptimeSeconds));
 
     server_.send(
         200,
