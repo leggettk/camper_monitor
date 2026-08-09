@@ -112,6 +112,10 @@ void WebPageBuilder::addStatus(
 
 String WebPageBuilder::build()
 {
+    if (formOpen_)
+    {
+        endForm();
+    }
     if (gridOpen_)
     {
         endGrid();
@@ -356,7 +360,114 @@ void WebPageBuilder::appendStyles()
         letter-spacing: 0.1em;
         text-transform: uppercase;
     }
+    .settings-form {
+    display: grid;
+    gap: 18px;
+}
 
+.form-group {
+    display: grid;
+    gap: 8px;
+}
+
+.form-label {
+    color: var(--text);
+    font-weight: 700;
+}
+
+.form-description {
+    margin-top: 5px;
+    color: var(--muted);
+    font-size: 0.88rem;
+    line-height: 1.4;
+}
+
+.input-with-unit {
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+.input-with-unit:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(76, 152, 255, 0.15);
+}
+
+.input-with-unit input {
+    width: 100%;
+    padding: 13px 14px;
+    color: var(--text);
+    background: transparent;
+    border: 0;
+    outline: 0;
+    font: inherit;
+}
+
+.input-unit {
+    padding: 0 14px;
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 15px;
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+}
+
+.checkbox-row input {
+    width: 22px;
+    height: 22px;
+    accent-color: var(--accent);
+}
+
+.primary-button {
+    width: 100%;
+    padding: 14px 18px;
+    color: white;
+    background: var(--accent);
+    border: 0;
+    border-radius: 10px;
+    font: inherit;
+    font-weight: 750;
+    cursor: pointer;
+}
+
+.primary-button:hover {
+    filter: brightness(1.08);
+}
+
+.toast {
+    margin-bottom: 16px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: var(--surface);
+    font-weight: 700;
+}
+
+.toast.status-normal {
+    color: var(--normal);
+    border-color: rgba(49, 209, 124, 0.45);
+}
+
+.toast.status-warning {
+    color: var(--warning);
+    border-color: rgba(245, 185, 66, 0.45);
+}
+
+.toast.status-critical {
+    color: var(--critical);
+    border-color: rgba(255, 98, 98, 0.45);
+}
     .status-row {
         display: flex;
         justify-content: space-between;
@@ -416,7 +527,106 @@ void WebPageBuilder::appendStyles()
     a {
         color: #86baff;
     }
+    .settings-grid {
+    display: grid;
+    gap: 14px;
+}
 
+.settings-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    min-height: 104px;
+    padding: 20px;
+    color: var(--text);
+    text-decoration: none;
+    background:
+        linear-gradient(
+            145deg,
+            var(--surface-raised),
+            var(--surface));
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    transition:
+        transform 0.15s ease,
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.settings-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(76, 152, 255, 0.7);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+}
+
+.settings-card-copy {
+    min-width: 0;
+}
+
+.settings-title {
+    font-size: 1.08rem;
+    font-weight: 760;
+}
+
+.settings-description {
+    margin-top: 7px;
+    color: var(--muted);
+    line-height: 1.45;
+}
+
+.settings-arrow {
+    flex: 0 0 auto;
+    color: var(--accent);
+    font-size: 2rem;
+    line-height: 1;
+}
+.primary-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: none;
+}
+
+.form-message {
+    min-height: 22px;
+    color: var(--critical);
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+    .toast {
+    transition:
+        opacity 0.3s ease,
+        transform 0.3s ease;
+}
+.text-input
+{
+    width: 100%;
+    padding: 12px 14px;
+
+    color: var(--text);
+
+    background: var(--background);
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    font: inherit;
+}
+
+.text-input:focus
+{
+    outline: none;
+
+    border-color: var(--accent);
+
+    box-shadow:
+        0 0 0 3px
+        rgba(76,152,255,.15);
+}
+.toast-hidden {
+    opacity: 0;
+    transform: translateY(-8px);
+}
     footer {
         display: flex;
         flex-wrap: wrap;
@@ -690,4 +900,376 @@ String WebPageBuilder::statusLabel(
         default:
             return "Unknown";
     }
+}
+void WebPageBuilder::addSettingsCard(
+    const String& title,
+    const String& description,
+    const String& href)
+{
+    html_ += F("<a class=\"settings-card\" href=\"");
+    html_ += escapeHtml(href);
+    html_ += F("\">");
+
+    html_ += F("<div class=\"settings-card-copy\">");
+
+    html_ += F("<div class=\"settings-title\">");
+    html_ += escapeHtml(title);
+    html_ += F("</div>");
+
+    html_ += F("<div class=\"settings-description\">");
+    html_ += escapeHtml(description);
+    html_ += F("</div>");
+
+    html_ += F("</div>");
+
+    html_ += F("<span class=\"settings-arrow\" aria-hidden=\"true\">");
+    html_ += F("&#8250;");
+    html_ += F("</span>");
+
+    html_ += F("</a>");
+}
+void WebPageBuilder::addLink(
+    const String& label,
+    const String& url)
+{
+    html_ += F("<p class=\"page-link\"><a href=\"");
+    html_ += escapeHtml(url);
+    html_ += F("\">");
+    html_ += escapeHtml(label);
+    html_ += F("</a></p>");
+}
+void WebPageBuilder::beginForm(
+    const String& action,
+    const String& method)
+{
+    if (formOpen_)
+    {
+        endForm();
+    }
+
+    html_ += F("<form class=\"settings-form\" action=\"");
+    html_ += escapeHtml(action);
+    html_ += F("\" method=\"");
+    html_ += escapeHtml(method);
+    html_ += F("\">");
+    html_ += F("<form id=\"settingsForm\" class=\"settings-form\" action=\"");
+    formOpen_ = true;
+}
+
+void WebPageBuilder::endForm()
+{
+    if (!formOpen_)
+    {
+        return;
+    }
+
+    html_ += F("</form>");
+    formOpen_ = false;
+}
+void WebPageBuilder::addNumberInput(
+    const String& label,
+    const String& name,
+    float value,
+    float minimum,
+    float maximum,
+    float step,
+    const String& unit,
+    const String& description)
+{
+    if (!formOpen_)
+    {
+        return;
+    }
+
+    html_ += F("<label class=\"form-group\">");
+
+    html_ += F("<span class=\"form-label\">");
+    html_ += escapeHtml(label);
+    html_ += F("</span>");
+
+    if (description.length() > 0)
+    {
+        html_ += F("<span class=\"form-description\">");
+        html_ += escapeHtml(description);
+        html_ += F("</span>");
+    }
+
+    html_ += F("<div class=\"input-with-unit\">");
+
+    html_ += F("<input type=\"number\" name=\"");
+    html_ += escapeHtml(name);
+    html_ += F("\" value=\"");
+    html_ += String(value, 1);
+    html_ += F("\" min=\"");
+    html_ += String(minimum, 1);
+    html_ += F("\" max=\"");
+    html_ += String(maximum, 1);
+    html_ += F("\" step=\"");
+    html_ += String(step, 1);
+    html_ += F("\" required>");
+
+    if (unit.length() > 0)
+    {
+        html_ += F("<span class=\"input-unit\">");
+        html_ += escapeHtml(unit);
+        html_ += F("</span>");
+    }
+
+    html_ += F("</div>");
+    html_ += F("</label>");
+}
+void WebPageBuilder::addCheckbox(
+    const String& label,
+    const String& name,
+    bool checked,
+    const String& description)
+{
+    if (!formOpen_)
+    {
+        return;
+    }
+
+    html_ += F("<label class=\"checkbox-row\">");
+
+    html_ += F("<div>");
+    html_ += F("<div class=\"form-label\">");
+    html_ += escapeHtml(label);
+    html_ += F("</div>");
+
+    if (description.length() > 0)
+    {
+        html_ += F("<div class=\"form-description\">");
+        html_ += escapeHtml(description);
+        html_ += F("</div>");
+    }
+
+    html_ += F("</div>");
+
+    html_ += F("<input type=\"checkbox\" name=\"");
+    html_ += escapeHtml(name);
+    html_ += F("\" value=\"1\"");
+
+    if (checked)
+    {
+        html_ += F(" checked");
+    }
+
+    html_ += F(">");
+
+    html_ += F("</label>");
+}
+void WebPageBuilder::addSubmitButton(
+    const String& label)
+{
+    if (!formOpen_)
+    {
+        return;
+    }
+
+    html_ += F(
+        "<button "
+        "id=\"saveButton\" "
+        "class=\"primary-button\" "
+        "type=\"submit\">");
+
+    html_ += escapeHtml(label);
+    html_ += F("</button>");
+
+    html_ += F(
+        "<div id=\"formMessage\" "
+        "class=\"form-message\" "
+        "role=\"alert\"></div>");
+}
+void WebPageBuilder::addToast(
+    const String& message,
+    StatusLevel level)
+{
+    html_ += F("<div id=\"pageToast\" class=\"toast ");
+    html_ += statusClass(level);
+    html_ += F("\">");
+    html_ += escapeHtml(message);
+    html_ += F("</div>");
+
+    html_ += F(R"rawliteral(
+<script>
+window.setTimeout(function() {
+    const toast = document.getElementById("pageToast");
+
+    if (!toast) {
+        return;
+    }
+
+    toast.classList.add("toast-hidden");
+
+    window.setTimeout(function() {
+        toast.remove();
+    }, 300);
+}, 3000);
+</script>
+)rawliteral");
+}
+
+void WebPageBuilder::addTextInput(
+    const String& label,
+    const String& name,
+    const String& value,
+    size_t maxLength,
+    const String& description)
+{
+    if (!formOpen_)
+    {
+        return;
+    }
+
+    html_ += F("<label class=\"form-group\">");
+
+    html_ += F("<span class=\"form-label\">");
+    html_ += escapeHtml(label);
+    html_ += F("</span>");
+
+    if (!description.isEmpty())
+    {
+        html_ += F("<span class=\"form-description\">");
+        html_ += escapeHtml(description);
+        html_ += F("</span>");
+    }
+
+    html_ += F("<input type=\"text\" ");
+
+    html_ += F("name=\"");
+    html_ += escapeHtml(name);
+    html_ += F("\" ");
+
+    html_ += F("value=\"");
+    html_ += escapeHtml(value);
+    html_ += F("\" ");
+
+    html_ += F("maxlength=\"");
+    html_ += String(maxLength);
+    html_ += F("\" ");
+
+    html_ += F("class=\"text-input\">");
+
+    html_ += F("</label>");
+}
+
+void WebPageBuilder::addSettingsFormScript()
+{
+    html_ += F(R"rawliteral(
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    var form = document.getElementById("settingsForm");
+    var button = document.getElementById("saveButton");
+    var message = document.getElementById("formMessage");
+
+    if (!form || !button || !message) {
+        return;
+    }
+
+    function snapshot() {
+        var result = [];
+        var elements = form.elements;
+
+        for (var i = 0; i < elements.length; i++) {
+            var element = elements[i];
+
+            if (!element.name) {
+                continue;
+            }
+
+            if (element.type === "checkbox") {
+                result.push(
+                    element.name + "=" +
+                    (element.checked ? "1" : "0"));
+            } else {
+                result.push(
+                    element.name + "=" +
+                    element.value);
+            }
+        }
+
+        return result.join("&");
+    }
+
+    var initialSnapshot = snapshot();
+
+    function validateForm() {
+        var highInput =
+            form.elements["tempHigh"];
+
+        var resetInput =
+            form.elements["tempReset"];
+
+        if (!highInput || !resetInput) {
+            message.textContent = "";
+            return true;
+        }
+
+        var high = parseFloat(highInput.value);
+        var reset = parseFloat(resetInput.value);
+
+        if (isNaN(high) || isNaN(reset)) {
+            message.textContent =
+                "Enter valid temperature values.";
+            return false;
+        }
+
+        if (high < 40 || high > 150) {
+            message.textContent =
+                "High temperature must be between 40°F and 150°F.";
+            return false;
+        }
+
+        if (reset < 35) {
+            message.textContent =
+                "Reset temperature must be at least 35°F.";
+            return false;
+        }
+
+        if (reset >= high) {
+            message.textContent =
+                "Reset temperature must be below the alarm temperature.";
+            return false;
+        }
+
+        message.textContent = "";
+        return true;
+    }
+
+    function updateButton() {
+        var changed =
+            snapshot() !== initialSnapshot;
+
+        var valid =
+            validateForm();
+
+        button.disabled =
+            !changed || !valid;
+    }
+
+    form.addEventListener(
+        "input",
+        updateButton);
+
+    form.addEventListener(
+        "change",
+        updateButton);
+
+    form.addEventListener(
+        "submit",
+        function (event) {
+            if (!validateForm()) {
+                event.preventDefault();
+                updateButton();
+                return;
+            }
+
+            button.disabled = true;
+            button.textContent = "Saving...";
+        });
+
+    button.disabled = true;
+});
+</script>
+)rawliteral");
 }

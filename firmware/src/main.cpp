@@ -143,11 +143,11 @@ void handleButton()
 void publishTelemetry(unsigned long now)
 {
     static unsigned long lastPublish = 0;
-
+    const DeviceSettings& config = settings.get();
     if (
         !state.temperature.valid ||
         now - lastPublish <
-            MQTT_PUBLISH_INTERVAL_MS)
+            (config.temperaturePublishIntervalSeconds * 1000UL))
     {
         return;
     }
@@ -164,7 +164,7 @@ void publishTelemetry(unsigned long now)
 void updateShorePower()
 {
     static bool initialized = false;
-
+    const DeviceSettings& config = settings.get();
     shorePower.update();
 
     state.power.shorePowerPresent =
@@ -195,15 +195,25 @@ void updateShorePower()
 
         state.alarms.shorePower = true;
 
-        state.sms.lastSuccessful =
-            sms.sendShorePowerLost(
-                state.power.batteryVoltage,
-                state.power.batteryVoltageValid);
-
-        if (state.sms.lastSuccessful)
+        if (config.smsEnabled)
         {
-            state.sms.lastSentTimeSeconds =
-                millis() / 1000UL;
+            state.sms.lastSuccessful =
+                sms.sendShorePowerLost(
+                    state.power.batteryVoltage,
+                    state.power.batteryVoltageValid);
+
+            if (state.sms.lastSuccessful)
+            {
+                state.sms.lastSentTimeSeconds =
+                    millis() / 1000UL;
+            }
+        }
+        else
+        {
+            state.sms.lastSuccessful = false;
+
+            logger.info(
+                "Shore power loss SMS skipped: SMS disabled");
         }
     }
     else
@@ -212,13 +222,23 @@ void updateShorePower()
 
         state.alarms.shorePower = false;
 
-        state.sms.lastSuccessful =
-            sms.sendShorePowerRestored();
-
-        if (state.sms.lastSuccessful)
+        if (config.smsEnabled)
         {
-            state.sms.lastSentTimeSeconds =
-                millis() / 1000UL;
+            state.sms.lastSuccessful =
+                sms.sendShorePowerRestored();
+
+            if (state.sms.lastSuccessful)
+            {
+                state.sms.lastSentTimeSeconds =
+                    millis() / 1000UL;
+            }
+        }
+        else
+        {
+            state.sms.lastSuccessful = false;
+
+            logger.info(
+                "Shore power restored SMS skipped: SMS disabled");
         }
     }
 }
@@ -226,18 +246,21 @@ void updateShorePower()
 void updateTemperatureAlarm(unsigned long now)
 {
     static unsigned long highTemperatureSince = 0;
-
+    const DeviceSettings& config = settings.get();
     if (!state.temperature.valid)
     {
         highTemperatureSince = 0;
         return;
     }
 
+    //
+    // NO ACTIVE HIGH-TEMPERATURE ALARM
+    //
     if (!state.alarms.highTemperature)
     {
         if (
             state.temperature.ambientF >=
-            TEMP_HIGH_ALARM_F)
+            config.tempAlarmHighF)
         {
             if (highTemperatureSince == 0)
             {
@@ -258,31 +281,51 @@ void updateTemperatureAlarm(unsigned long now)
                     "High-temperature alarm: %.1f F",
                     state.temperature.ambientF);
 
-                state.sms.lastSuccessful =
-                    sms.sendHighTemperature(
-                        state.temperature.ambientF,
-                        TEMP_HIGH_ALARM_F);
-
-                if (state.sms.lastSuccessful)
+                if (config.smsEnabled)
                 {
-                    state.sms.lastSentTimeSeconds =
-                        now / 1000UL;
+                    state.sms.lastSuccessful =
+                        sms.sendHighTemperature(
+                            state.temperature.ambientF,
+                            config.tempAlarmHighF);
+
+                    if (state.sms.lastSuccessful)
+                    {
+                        state.sms.lastSentTimeSeconds =
+                            now / 1000UL;
+                    }
+                }
+                else
+                {
+                    state.sms.lastSuccessful = false;
+
+                    logger.info(
+                        "High-temperature SMS skipped: SMS disabled");
                 }
             }
         }
         else
         {
+            // Temperature dropped below the alarm
+            // threshold before the delay expired.
             highTemperatureSince = 0;
         }
 
+        //
+        // IMPORTANT:
+        // There is no active alarm to clear.
+        //
         return;
     }
 
-    // Alarm is already active. Reset only after cooling
-    // below the lower reset threshold.
+    //
+    // HIGH-TEMPERATURE ALARM IS ACTIVE
+    //
+    // Only clear it after temperature falls below
+    // the configured reset threshold.
+    //
     if (
         state.temperature.ambientF <=
-        TEMP_HIGH_RESET_F)
+        config.tempAlarmResetF)
     {
         state.alarms.highTemperature = false;
 
@@ -290,14 +333,24 @@ void updateTemperatureAlarm(unsigned long now)
             "Temperature alarm cleared: %.1f F",
             state.temperature.ambientF);
 
-        state.sms.lastSuccessful =
-            sms.sendTemperatureNormal(
-                state.temperature.ambientF);
-
-        if (state.sms.lastSuccessful)
+        if (config.smsEnabled)
         {
-            state.sms.lastSentTimeSeconds =
-                now / 1000UL;
+            state.sms.lastSuccessful =
+                sms.sendTemperatureNormal(
+                    state.temperature.ambientF);
+
+            if (state.sms.lastSuccessful)
+            {
+                state.sms.lastSentTimeSeconds =
+                    now / 1000UL;
+            }
+        }
+        else
+        {
+            state.sms.lastSuccessful = false;
+
+            logger.info(
+                "Temperature alarm clear SMS skipped: SMS disabled");
         }
     }
 }
@@ -305,10 +358,10 @@ void updateTemperatureAlarm(unsigned long now)
 void publishHeartbeat(unsigned long now)
 {
     static unsigned long lastHeartbeat = 0;
-
+    const DeviceSettings& config = settings.get();
     if (
         now - lastHeartbeat <
-        HEARTBEAT_INTERVAL_MS)
+        (config.heartbeatIntervalSeconds * 1000UL))
     {
         return;
     }

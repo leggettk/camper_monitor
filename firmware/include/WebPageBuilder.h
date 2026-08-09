@@ -54,8 +54,48 @@ public:
     void addFooter(
         const String& version,
         const String& uptime);
+    
+    void addSettingsCard(
+        const String& title,
+        const String& description,
+        const String& href);
 
+    void beginForm(
+        const String& action,
+        const String& method = "POST");
+
+    void endForm();
+
+    void addNumberInput(
+        const String& label,
+        const String& name,
+        float value,
+        float minimum,
+        float maximum,
+        float step,
+        const String& unit = "",
+        const String& description = "");
+
+    void addCheckbox(
+        const String& label,
+        const String& name,
+        bool checked,
+        const String& description = "");
+
+    void addSubmitButton(
+        const String& label = "Save Changes");
+
+    void addToast(
+        const String& message,
+        StatusLevel level = StatusLevel::Normal);    
     String build();
+    void addSettingsFormScript();
+    void addTextInput(
+    const String& label,
+    const String& name,
+    const String& value,
+    size_t maxLength,
+    const String& description = "");
 
 private:
     String html_;
@@ -63,9 +103,9 @@ private:
     bool cardOpen_ = false;
     bool gridOpen_ = false;
     bool footerAdded_ = false;
-
+    bool formOpen_ = false;
     void appendStyles();
-
+    
     String escapeHtml(const String& value) const;
     String statusClass(StatusLevel level) const;
     String statusLabel(StatusLevel level) const;

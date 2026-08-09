@@ -18,7 +18,6 @@ public:
         OTAService& otaService);
 
     void update();
-
     bool running() const;
 
 private:
@@ -27,20 +26,19 @@ private:
     Settings* settings_ = nullptr;
     AppState* appState_ = nullptr;
     Logger* logger_ = nullptr;
-    String formatTemperature() const;
-    String formatBatteryVoltage() const;
-    String formatUptime(uint32_t totalSeconds) const;
-    String formatFreeHeap(uint32_t bytes) const;
     bool started_ = false;
-
     void registerRoutes();
-
-    void handleHome();
+    void handleReportingSettings();
+    void handleReportingSettingsSave();
     void handleNotFound();
     void handleOtaPage();
     void handleOtaUpload();
     void handleOtaUploadComplete();
-
+    void handleSettings();
+    void handleAlertSettings();
+    void handleAlertSettingsSave();
+    void handleDeviceSettings();
+    void handleDeviceSettingsSave();
     bool otaUploadStarted_ = false;
     bool otaUploadSuccessful_ = false;
     size_t otaBytesWritten_ = 0;
