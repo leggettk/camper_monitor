@@ -75,6 +75,12 @@ bool WebServerService::begin(
     appState,
     logger);
 
+    otaPage_.begin(
+    server_,
+    appState,
+    logger,
+    otaService);
+
     registerRoutes();
 
     server_.begin();
@@ -121,7 +127,7 @@ void WebServerService::registerRoutes()
         HTTP_GET,
         [this]()
         {
-            handleOtaPage();
+            otaPage_.handlePage();
         });
 
     server_.on(
@@ -129,11 +135,11 @@ void WebServerService::registerRoutes()
         HTTP_POST,
         [this]()
         {
-            handleOtaUploadComplete();
+            otaPage_.handleUploadComplete();
         },
     [this]()
     {
-        handleOtaUpload();
+        otaPage_.handleUpload();
     });
 
     server_.on(
@@ -257,101 +263,7 @@ void WebServerService::handleNotFound()
         "text/plain; charset=utf-8",
         message);
 }
-void WebServerService::handleOtaPage()
-{
-    const String html = R"rawliteral(
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0">
 
-    <title>Camper Sentinel OTA</title>
-</head>
-<body>
-    <h1>Camper Sentinel Firmware Update</h1>
-
-    <form
-        method="POST"
-        action="/ota"
-        enctype="multipart/form-data">
-
-        <input
-            type="file"
-            name="firmware"
-            accept=".bin"
-            required>
-
-        <button type="submit">
-            Upload Firmware
-        </button>
-    </form>
-
-    <p>
-        <a href="/">Back to Dashboard</a>
-    </p>
-</body>
-</html>
-)rawliteral";
-
-    server_.send(
-        200,
-        "text/html; charset=utf-8",
-        html);
-}
-void WebServerService::handleOtaUpload()
-{
-    HTTPUpload& upload = server_.upload();
-
-    switch (upload.status)
-    {
-        case UPLOAD_FILE_START:
-            otaService_->beginUpload();
-            break;
-
-        case UPLOAD_FILE_WRITE:
-            otaService_->writeChunk(
-                upload.buf,
-                upload.currentSize);
-            break;
-
-        case UPLOAD_FILE_END:
-            otaService_->finishUpload();
-            break;
-
-        case UPLOAD_FILE_ABORTED:
-            otaService_->abortUpload();
-            break;
-
-        default:
-            break;
-    }
-}
-
-void WebServerService::handleOtaUploadComplete()
-{
-    if (otaService_->successful())
-    {
-        server_.send(
-            200,
-            "text/html",
-            "<h2>Firmware updated successfully.<br>"
-            "Rebooting...</h2>");
-
-        delay(1000);
-
-        ESP.restart();
-    }
-    else
-    {
-        server_.send(
-            500,
-            "text/plain",
-            otaService_->lastError());
-    }
-}
 
 
 

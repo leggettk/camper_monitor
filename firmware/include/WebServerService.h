@@ -2,7 +2,9 @@
 
 #include <Arduino.h>
 #include <WebServer.h>
+#include "Web/DashboardPage.h"
 #include "Web/SettingsPage.h"
+#include "Web/OTAPage.h"
 #include "AppState.h"
 #include "Logger.h"
 #include "Settings.h"
@@ -39,4 +41,6 @@ private:
     bool otaUploadStarted_ = false;
     bool otaUploadSuccessful_ = false;
     size_t otaBytesWritten_ = 0;
+    DashboardPage dashboardPage_;
+    OTAPage otaPage_;
 };
