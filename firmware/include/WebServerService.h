@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 #include <WebServer.h>
-
+#include "Web/SettingsPage.h"
 #include "AppState.h"
 #include "Logger.h"
 #include "Settings.h"
@@ -26,17 +26,14 @@ private:
     Settings* settings_ = nullptr;
     AppState* appState_ = nullptr;
     Logger* logger_ = nullptr;
+    SettingsPage settingsPage_;
     bool started_ = false;
     void registerRoutes();
-    void handleReportingSettings();
-    void handleReportingSettingsSave();
     void handleNotFound();
     void handleOtaPage();
     void handleOtaUpload();
     void handleOtaUploadComplete();
-    void handleSettings();
-    void handleAlertSettings();
-    void handleAlertSettingsSave();
+    // void handleSettings();
     void handleDeviceSettings();
     void handleDeviceSettingsSave();
     bool otaUploadStarted_ = false;
